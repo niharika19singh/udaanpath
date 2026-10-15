@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import health, profiles, careers, pathways
+from app.api.v1 import health, profiles, careers, pathways, opportunities
 
 api_router = APIRouter()
 
@@ -14,3 +14,6 @@ api_router.include_router(careers.router)
 
 # Learning roadmaps & pathways
 api_router.include_router(pathways.router)
+
+# Scholarships, schemes & opportunities
+api_router.include_router(opportunities.router)
