@@ -1,5 +1,14 @@
 from fastapi import APIRouter
-from app.api.v1 import health, profiles, careers, pathways, opportunities, eligibility, progress
+from app.api.v1 import (
+    health,
+    profiles,
+    careers,
+    pathways,
+    opportunities,
+    eligibility,
+    progress,
+    facilitator
+)
 
 api_router = APIRouter()
 
@@ -23,3 +32,6 @@ api_router.include_router(eligibility.router)
 
 # Progress tracking, applications & badges
 api_router.include_router(progress.router)
+
+# Facilitator & Counselor portal
+api_router.include_router(facilitator.router)
