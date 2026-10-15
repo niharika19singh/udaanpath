@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import health, profiles, careers, pathways, opportunities
+from app.api.v1 import health, profiles, careers, pathways, opportunities, eligibility
 
 api_router = APIRouter()
 
@@ -17,3 +17,6 @@ api_router.include_router(pathways.router)
 
 # Scholarships, schemes & opportunities
 api_router.include_router(opportunities.router)
+
+# Deterministic eligibility engine
+api_router.include_router(eligibility.router)
