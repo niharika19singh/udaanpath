@@ -7,7 +7,8 @@ from app.api.v1 import (
     opportunities,
     eligibility,
     progress,
-    facilitator
+    facilitator,
+    ai
 )
 
 api_router = APIRouter()
@@ -35,3 +36,6 @@ api_router.include_router(progress.router)
 
 # Facilitator & Counselor portal
 api_router.include_router(facilitator.router)
+
+# Optional AI career advisor with rule fallback
+api_router.include_router(ai.router)
