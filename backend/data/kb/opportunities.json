@@ -1,0 +1,349 @@
+[
+  {
+    "slug": "nsp-post-matric-scholarship",
+    "title": "National Scholarship Portal (NSP) - Post Matric Scholarship",
+    "category": "scholarship",
+    "provider": "Ministry of Social Justice & Empowerment, Govt of India",
+    "target_group": null,
+    "description": "Financial assistance to students from marginalized and economically weaker backgrounds pursuing post-secondary education in recognized institutions.",
+    "official_url": "https://scholarships.gov.in",
+    "source_url": null,
+    "status": "needs_review",
+    "is_sample": false,
+    "last_verified_on": null,
+    "verified_by": null,
+    "min_age": 16,
+    "max_age": 30,
+    "income_ceiling": 250000.0,
+    "min_marks_percentage": 50.0,
+    "allowed_genders": [
+      "all"
+    ],
+    "allowed_categories": [
+      "SC",
+      "ST",
+      "OBC",
+      "EWS"
+    ],
+    "eligible_education_levels": [
+      "12th_pass",
+      "iti_diploma",
+      "undergraduate",
+      "postgraduate"
+    ],
+    "eligible_streams": [
+      "all"
+    ],
+    "states": [
+      "all"
+    ],
+    "other_criteria": [],
+    "required_documents": [
+      "Income Certificate issued by Revenue Authority / Tehsildar",
+      "Aadhaar Card",
+      "Class 10th & 12th Marksheets",
+      "Caste / Category Certificate",
+      "Active Bank Account Passbook seeded with Aadhaar"
+    ],
+    "eligibility_confirmed": false,
+    "deadline": null,
+    "deadline_note": "UNCONFIRMED legacy value: 2026-11-30",
+    "benefit_description": "Full maintenance allowance and non-refundable fee waiver up to ₹20,000 per annum via DBT.",
+    "benefit_amount_inr": 20000.0,
+    "actionable_steps": "Register on scholarships.gov.in using Aadhaar One-Time-Password. Upload verified income certificate and institute fee receipt.",
+    "notes": "Legacy claim: verified 2026-03-15 by 'National Scholarship Division, GoI Verified Registry' (NOT independently checked)."
+  },
+  {
+    "slug": "aicte-pragati-scholarship-girls",
+    "title": "AICTE Pragati Scholarship Scheme for Girl Students",
+    "category": "scholarship",
+    "provider": "All India Council for Technical Education (AICTE)",
+    "target_group": null,
+    "description": "Scheme empowering young women to pursue technical education (Degree or Diploma) in AICTE-approved institutions across India.",
+    "official_url": "https://www.aicte-india.org/schemes/students-development-schemes/Pragati",
+    "source_url": null,
+    "status": "needs_review",
+    "is_sample": false,
+    "last_verified_on": null,
+    "verified_by": null,
+    "min_age": 17,
+    "max_age": 28,
+    "income_ceiling": 800000.0,
+    "min_marks_percentage": 60.0,
+    "allowed_genders": [
+      "female"
+    ],
+    "allowed_categories": [
+      "all"
+    ],
+    "eligible_education_levels": [
+      "iti_diploma",
+      "undergraduate"
+    ],
+    "eligible_streams": [
+      "science_pcm",
+      "vocational"
+    ],
+    "states": [
+      "all"
+    ],
+    "other_criteria": [],
+    "required_documents": [
+      "Class 10th and 12th Marksheets",
+      "AICTE Approved College Admission Letter",
+      "Family Income Certificate (below ₹8 LPA)",
+      "Aadhaar Card",
+      "Tuition Fee Receipt"
+    ],
+    "eligibility_confirmed": false,
+    "deadline": null,
+    "deadline_note": "UNCONFIRMED legacy value: 2026-10-31",
+    "benefit_description": "₹50,000 per annum for tuition fees, computer purchase, books, and competitive exam fees.",
+    "benefit_amount_inr": 50000.0,
+    "actionable_steps": "Apply via National Scholarship Portal under AICTE scheme tab after taking technical college admission.",
+    "notes": "Legacy claim: verified 2026-02-20 by 'AICTE Student Development Cell' (NOT independently checked)."
+  },
+  {
+    "slug": "pmkvy-4-skilling-scheme",
+    "title": "Pradhan Mantri Kaushal Vikas Yojana (PMKVY 4.0)",
+    "category": "government_scheme",
+    "provider": "Ministry of Skill Development and Entrepreneurship (MSDE)",
+    "target_group": null,
+    "description": "Free industry-aligned short term technical and vocational skilling with NSDC certification and placement assistance.",
+    "official_url": "https://www.pmkvyofficial.org",
+    "source_url": null,
+    "status": "needs_review",
+    "is_sample": false,
+    "last_verified_on": null,
+    "verified_by": null,
+    "min_age": 15,
+    "max_age": 45,
+    "income_ceiling": null,
+    "min_marks_percentage": 35.0,
+    "allowed_genders": [
+      "all"
+    ],
+    "allowed_categories": [
+      "all"
+    ],
+    "eligible_education_levels": [
+      "10th_pass",
+      "12th_pass",
+      "iti_diploma",
+      "undergraduate"
+    ],
+    "eligible_streams": [
+      "all"
+    ],
+    "states": [
+      "all"
+    ],
+    "other_criteria": [],
+    "required_documents": [
+      "Aadhaar Card",
+      "Bank Account Details",
+      "Highest Educational Qualification Certificate"
+    ],
+    "eligibility_confirmed": false,
+    "deadline": null,
+    "deadline_note": "UNCONFIRMED legacy value: Rolling (Year-round batches)",
+    "benefit_description": "100% free course training, exam fee sponsorship, and post-placement transit stipend up to ₹15,000.",
+    "benefit_amount_inr": 15000.0,
+    "actionable_steps": "Visit pmkvyofficial.org or your nearest Pradhan Mantri Kaushal Kendra (PMKK) to register for training batch.",
+    "notes": "Legacy claim: verified 2026-04-10 by 'National Skill Development Corporation (NSDC)' (NOT independently checked)."
+  },
+  {
+    "slug": "nats-apprenticeship-program",
+    "title": "National Apprenticeship Training Scheme (NATS)",
+    "category": "apprenticeship",
+    "provider": "Board of Apprenticeship Training (BOAT) / Ministry of Education",
+    "target_group": null,
+    "description": "One-year on-the-job apprenticeship training program in leading public and private industrial establishments.",
+    "official_url": "https://nats.education.gov.in",
+    "source_url": null,
+    "status": "needs_review",
+    "is_sample": false,
+    "last_verified_on": null,
+    "verified_by": null,
+    "min_age": 18,
+    "max_age": 30,
+    "income_ceiling": null,
+    "min_marks_percentage": 50.0,
+    "allowed_genders": [
+      "all"
+    ],
+    "allowed_categories": [
+      "all"
+    ],
+    "eligible_education_levels": [
+      "iti_diploma",
+      "undergraduate"
+    ],
+    "eligible_streams": [
+      "all"
+    ],
+    "states": [
+      "all"
+    ],
+    "other_criteria": [],
+    "required_documents": [
+      "Diploma or Degree Final Marksheet / Provisional Certificate",
+      "Aadhaar Card",
+      "Bank Account details with Aadhaar seeding"
+    ],
+    "eligibility_confirmed": false,
+    "deadline": null,
+    "deadline_note": "UNCONFIRMED legacy value: Rolling",
+    "benefit_description": "Monthly government stipend: ₹9,000/month for Graduate Apprentices, ₹8,000/month for Diploma Apprentices.",
+    "benefit_amount_inr": 108000.0,
+    "actionable_steps": "Enroll on nats.education.gov.in portal. Search for matching corporate establishment postings in your state.",
+    "notes": "Legacy claim: verified 2026-03-01 by 'BOAT Eastern / Western / Northern / Southern Region' (NOT independently checked)."
+  },
+  {
+    "slug": "kotak-kanya-scholarship",
+    "title": "Kotak Kanya Scholarship (Kotak Education Foundation)",
+    "category": "scholarship",
+    "provider": "Kotak Education Foundation (CSR Initiative)",
+    "target_group": null,
+    "description": "Financial support to meritorious girl students from low-income families pursuing professional graduation degrees.",
+    "official_url": "https://www.kotakeducation.org/kotak-kanya-scholarship",
+    "source_url": null,
+    "status": "needs_review",
+    "is_sample": false,
+    "last_verified_on": null,
+    "verified_by": null,
+    "min_age": 17,
+    "max_age": 25,
+    "income_ceiling": 600000.0,
+    "min_marks_percentage": 75.0,
+    "allowed_genders": [
+      "female"
+    ],
+    "allowed_categories": [
+      "all"
+    ],
+    "eligible_education_levels": [
+      "12th_pass",
+      "undergraduate"
+    ],
+    "eligible_streams": [
+      "science_pcm",
+      "science_pcb",
+      "commerce"
+    ],
+    "states": [
+      "all"
+    ],
+    "other_criteria": [],
+    "required_documents": [
+      "Class 12th Board Marksheet (minimum 75%)",
+      "Admission letter for professional graduation (Engineering, Medicine, Law, Finance)",
+      "Income proof (Salary slip / Form 16 / Tehsildar certificate)",
+      "Aadhaar card"
+    ],
+    "eligibility_confirmed": false,
+    "deadline": null,
+    "deadline_note": "UNCONFIRMED legacy value: 2026-09-30",
+    "benefit_description": "₹1,50,000 per year until graduation completion to cover academic fees and hostel expenses.",
+    "benefit_amount_inr": 150000.0,
+    "actionable_steps": "Apply online at kotakeducation.org or Buddy4Study partner portal with required verified marksheets.",
+    "notes": "Legacy claim: verified 2026-03-10 by 'Kotak Education Foundation CSR Advisory' (NOT independently checked)."
+  },
+  {
+    "slug": "naps-apprenticeship-promotion",
+    "title": "National Apprenticeship Promotion Scheme (NAPS)",
+    "category": "apprenticeship",
+    "provider": "Ministry of Skill Development & Entrepreneurship",
+    "target_group": null,
+    "description": "Direct industry apprenticeship with government co-sharing of stipends across MSMEs and multinational manufacturers.",
+    "official_url": "https://www.apprenticeshipindia.gov.in",
+    "source_url": null,
+    "status": "needs_review",
+    "is_sample": false,
+    "last_verified_on": null,
+    "verified_by": null,
+    "min_age": 14,
+    "max_age": 35,
+    "income_ceiling": null,
+    "min_marks_percentage": 40.0,
+    "allowed_genders": [
+      "all"
+    ],
+    "allowed_categories": [
+      "all"
+    ],
+    "eligible_education_levels": [
+      "10th_pass",
+      "12th_pass",
+      "iti_diploma"
+    ],
+    "eligible_streams": [
+      "all"
+    ],
+    "states": [
+      "all"
+    ],
+    "other_criteria": [],
+    "required_documents": [
+      "Aadhaar Card",
+      "10th or 12th or ITI Certificate",
+      "Bank Passbook copy"
+    ],
+    "eligibility_confirmed": false,
+    "deadline": null,
+    "deadline_note": "UNCONFIRMED legacy value: Rolling",
+    "benefit_description": "Monthly stipend ranging from ₹7,000 to ₹12,000 with ₹1,500 direct DBT from Government of India.",
+    "benefit_amount_inr": 84000.0,
+    "actionable_steps": "Register candidate profile on apprenticeshipindia.gov.in and apply directly to vacancies posted by industry partners.",
+    "notes": "Legacy claim: verified 2026-02-15 by 'Apprenticeship Division, MSDE' (NOT independently checked)."
+  },
+  {
+    "slug": "citi-india-youth-employability",
+    "title": "Citi India Youth Employability & Vocational Training Initiative",
+    "category": "government_scheme",
+    "provider": "Citi India / Citi Foundation CSR Network",
+    "target_group": null,
+    "description": "Employability skilling, digital literacy, and job placement assistance for underprivileged youth across Tier-2 and Tier-3 industrial corridors.",
+    "official_url": "https://www.citigroup.com/citi/about/countrypresence/india.html",
+    "source_url": null,
+    "status": "needs_review",
+    "is_sample": false,
+    "last_verified_on": null,
+    "verified_by": null,
+    "min_age": 18,
+    "max_age": 29,
+    "income_ceiling": 300000.0,
+    "min_marks_percentage": 45.0,
+    "allowed_genders": [
+      "all"
+    ],
+    "allowed_categories": [
+      "all"
+    ],
+    "eligible_education_levels": [
+      "10th_pass",
+      "12th_pass",
+      "iti_diploma",
+      "undergraduate"
+    ],
+    "eligible_streams": [
+      "all"
+    ],
+    "states": [
+      "all"
+    ],
+    "other_criteria": [],
+    "required_documents": [
+      "Income Certificate or BPL Ration Card",
+      "Aadhaar Card",
+      "Highest education marksheet"
+    ],
+    "eligibility_confirmed": false,
+    "deadline": null,
+    "deadline_note": "UNCONFIRMED legacy value: Rolling (Quarterly Cohorts)",
+    "benefit_description": "Full scholarship covering technical skilling, soft skills coaching, and placement transit stipend.",
+    "benefit_amount_inr": 25000.0,
+    "actionable_steps": "Register at partner skilling centers or online portal under Citi Youth Employability Initiative.",
+    "notes": "Legacy claim: verified 2026-04-01 by 'Citi India Community Development & CSR Desk' (NOT independently checked)."
+  }
+]
