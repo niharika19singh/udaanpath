@@ -8,6 +8,7 @@ export const routes = {
   roadmap: '/roadmap',
   opportunities: '/opportunities',
   advisor: '/advisor',
+  educators: '/educators',
 } as const
 
 export type Route = (typeof routes)[keyof typeof routes]

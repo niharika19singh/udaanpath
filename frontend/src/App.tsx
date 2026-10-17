@@ -143,7 +143,13 @@ const steps = [
   },
 ]
 
-type NavId = 'profile' | 'careers' | 'pathways' | 'opportunities' | 'advisor'
+type NavId =
+  | 'profile'
+  | 'careers'
+  | 'pathways'
+  | 'opportunities'
+  | 'advisor'
+  | 'educators'
 
 const sideNavItems: { id: NavId; label: string; icon: LucideIcon }[] = [
   { id: 'profile', label: 'Student Profile', icon: UserRound },
@@ -160,6 +166,7 @@ const routedViews: Record<NavId, Route> = {
   pathways: routes.roadmap,
   opportunities: routes.opportunities,
   advisor: routes.advisor,
+  educators: routes.educators,
 }
 
 const topNav = [
@@ -169,6 +176,14 @@ const topNav = [
   'Opportunities',
   'For Educators',
 ]
+
+/** Portal view each top-bar link opens ('Home' goes to the landing page). */
+const topNavViews: Record<string, NavId> = {
+  'Explore Careers': 'careers',
+  'Learning Paths': 'pathways',
+  Opportunities: 'opportunities',
+  'For Educators': 'educators',
+}
 
 const infoPoints: { title: string; text: string; icon: LucideIcon }[] = [
   {
@@ -1539,6 +1554,29 @@ function App({ route }: { route: Route }) {
           </div>
         )}
 
+        {activeNav === 'educators' && (
+          <div className="dashboard-container">
+            <div className="empty-view">
+              <GraduationCap
+                size={48}
+                style={{ margin: '0 auto 16px', color: '#16866a' }}
+              />
+              <h3>For Educators is coming soon</h3>
+              <p>
+                Tools for teachers and counsellors are not built yet. Students
+                can start from the Student Profile or Career Discovery.
+              </p>
+              <button
+                className="primary-button"
+                style={{ marginTop: '16px' }}
+                onClick={() => selectNav('careers')}
+              >
+                Explore Careers
+              </button>
+            </div>
+          </div>
+        )}
+
         {activeNav !== 'careers' && (
           <footer className="footer-note">
             <span>UdaanPath</span>
@@ -1813,8 +1851,8 @@ function PortalShell({
 
           <nav className="top-nav" aria-label="Site">
             {topNav.map((label) => {
-              const isActive =
-                label === 'Explore Careers' && activeNav === 'careers'
+              const view = topNavViews[label]
+              const isActive = view === activeNav
               if (label === 'Home') {
                 return (
                   <a
@@ -1826,24 +1864,17 @@ function PortalShell({
                   </a>
                 )
               }
-              if (label === 'Explore Careers') {
-                return (
-                  <a
-                    key={label}
-                    className={isActive ? 'active' : ''}
-                    href={routes.careers}
-                    aria-current={isActive ? 'page' : undefined}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      onSelectNav('careers')
-                    }}
-                  >
-                    {label}
-                  </a>
-                )
-              }
               return (
-                <a key={label} aria-disabled="true">
+                <a
+                  key={label}
+                  className={isActive ? 'active' : ''}
+                  href={routedViews[view]}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    onSelectNav(view)
+                  }}
+                >
                   {label}
                 </a>
               )
