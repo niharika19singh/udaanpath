@@ -91,6 +91,17 @@ def test_age_range_must_be_sane():
         Opportunity.model_validate(base(min_age=30, max_age=20))
 
 
+def test_learning_resource_accepts_unknown_cost():
+    from app.schemas.knowledge_base import LearningResource
+
+    record = {
+        "slug": "unknown-cost-resource", "title": "Unknown Cost Resource",
+        "provider": "Provider", "url": "https://example.gov.in",
+        "cost": "unknown", "status": "needs_review",
+    }
+    assert LearningResource.model_validate(record).cost == "unknown"
+
+
 def test_upgrade_never_marks_verified_and_dedupes(tmp_path, monkeypatch):
     legacy = {
         "title": "Old Scheme", "slug": "old-scheme", "type": "scholarship", "provider": "X",

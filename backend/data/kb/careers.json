@@ -25,16 +25,16 @@
     ],
     "training_duration_months": 4,
     "financial_barrier": "low",
-    "salary_starting_inr": 240000,
-    "salary_mid_inr": 550000,
+    "salary_starting_inr": null,
+    "salary_mid_inr": null,
     "salary_source_url": null,
-    "growth_outlook": "Very High (Backed by PM Surya Ghar Muft Bijli Yojana)",
+    "growth_outlook": null,
     "status": "needs_review",
     "is_sample": false,
     "source_url": null,
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Legacy record: salary and growth claims have no source yet."
+    "notes": "Salary and growth claims removed because no supporting source was recorded. Verify qualification, training duration, salary, and outlook before using them."
   },
   {
     "slug": "junior-data-analyst",
@@ -63,16 +63,16 @@
     ],
     "training_duration_months": 6,
     "financial_barrier": "low",
-    "salary_starting_inr": 360000,
-    "salary_mid_inr": 900000,
+    "salary_starting_inr": null,
+    "salary_mid_inr": null,
     "salary_source_url": null,
-    "growth_outlook": "High",
+    "growth_outlook": null,
     "status": "needs_review",
     "is_sample": false,
     "source_url": null,
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Legacy record: salary and growth claims have no source yet."
+    "notes": "Salary and growth claims removed because no supporting source was recorded. Verify qualification, training duration, salary, and outlook before using them."
   },
   {
     "slug": "medical-laboratory-technician",
@@ -98,16 +98,16 @@
     ],
     "training_duration_months": 12,
     "financial_barrier": "moderate",
-    "salary_starting_inr": 280000,
-    "salary_mid_inr": 600000,
+    "salary_starting_inr": null,
+    "salary_mid_inr": null,
     "salary_source_url": null,
-    "growth_outlook": "High (Expanding hospital & diagnostic networks across Tier-2/3)",
+    "growth_outlook": null,
     "status": "needs_review",
     "is_sample": false,
     "source_url": null,
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Legacy record: salary and growth claims have no source yet."
+    "notes": "Salary and growth claims removed because no supporting source was recorded. Verify qualification, training duration, salary, and outlook before using them."
   },
   {
     "slug": "banking-financial-services-assistant",
@@ -135,16 +135,16 @@
     ],
     "training_duration_months": 3,
     "financial_barrier": "low",
-    "salary_starting_inr": 260000,
-    "salary_mid_inr": 650000,
+    "salary_starting_inr": null,
+    "salary_mid_inr": null,
     "salary_source_url": null,
-    "growth_outlook": "High (Rapid financial inclusion and fintech adoption)",
+    "growth_outlook": null,
     "status": "needs_review",
     "is_sample": false,
     "source_url": null,
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Legacy record: salary and growth claims have no source yet."
+    "notes": "Salary and growth claims removed because no supporting source was recorded. Verify qualification, training duration, salary, and outlook before using them."
   },
   {
     "slug": "ssc-junior-secretariat-assistant",
@@ -174,16 +174,16 @@
     ],
     "training_duration_months": 8,
     "financial_barrier": "low",
-    "salary_starting_inr": 320000,
-    "salary_mid_inr": 720000,
+    "salary_starting_inr": null,
+    "salary_mid_inr": null,
     "salary_source_url": null,
-    "growth_outlook": "Stable (Assured 7th Pay Commission pay scale & pension benefits)",
+    "growth_outlook": null,
     "status": "needs_review",
     "is_sample": false,
     "source_url": null,
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Legacy record: salary and growth claims have no source yet."
+    "notes": "Salary and growth claims removed because no supporting source was recorded. Verify qualification, training duration, salary, and outlook before using them."
   },
   {
     "slug": "cnc-machine-operator",
@@ -211,16 +211,16 @@
     ],
     "training_duration_months": 6,
     "financial_barrier": "low",
-    "salary_starting_inr": 250000,
-    "salary_mid_inr": 580000,
+    "salary_starting_inr": null,
+    "salary_mid_inr": null,
     "salary_source_url": null,
-    "growth_outlook": "High (Make in India and PLI manufacturing push)",
+    "growth_outlook": null,
     "status": "needs_review",
     "is_sample": false,
     "source_url": null,
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Legacy record: salary and growth claims have no source yet."
+    "notes": "Salary and growth claims removed because no supporting source was recorded. Verify qualification, training duration, salary, and outlook before using them."
   },
   {
     "slug": "ui-ux-digital-product-designer",
@@ -250,16 +250,16 @@
     ],
     "training_duration_months": 6,
     "financial_barrier": "low",
-    "salary_starting_inr": 380000,
-    "salary_mid_inr": 1100000,
+    "salary_starting_inr": null,
+    "salary_mid_inr": null,
     "salary_source_url": null,
-    "growth_outlook": "Very High",
+    "growth_outlook": null,
     "status": "needs_review",
     "is_sample": false,
     "source_url": null,
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Legacy record: salary and growth claims have no source yet."
+    "notes": "Salary and growth claims removed because no supporting source was recorded. Verify qualification, training duration, salary, and outlook before using them."
   },
   {
     "slug": "smart-agriculture-drone-technician",
@@ -288,15 +288,15 @@
     ],
     "training_duration_months": 3,
     "financial_barrier": "low",
-    "salary_starting_inr": 300000,
-    "salary_mid_inr": 700000,
+    "salary_starting_inr": null,
+    "salary_mid_inr": null,
     "salary_source_url": null,
-    "growth_outlook": "Explosive (Government subsidizing Kisan Drones across panchayats)",
+    "growth_outlook": null,
     "status": "needs_review",
     "is_sample": false,
     "source_url": null,
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Legacy record: salary and growth claims have no source yet."
+    "notes": "Salary and growth claims removed because no supporting source was recorded. Verify qualification, training duration, salary, and outlook before using them."
   }
 ]
