@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { HeroScene, LogoMark, SidebarScene, SproutScene } from './ProfileArt'
+import { linkTo, routes, type Route } from './router.ts'
 import './App.css'
 
 type FormData = {
@@ -103,9 +104,9 @@ const steps = [
   },
 ]
 
-const sideNav: { label: string; icon: LucideIcon; active?: boolean }[] = [
-  { label: 'Student Profile', icon: UserRound, active: true },
-  { label: 'Career Discovery', icon: Compass },
+const sideNav: { label: string; icon: LucideIcon; href?: Route }[] = [
+  { label: 'Student Profile', icon: UserRound, href: routes.onboarding },
+  { label: 'Career Discovery', icon: Compass, href: routes.careers },
   { label: 'Learning Roadmap', icon: BookOpen },
   { label: 'Opportunities', icon: BriefcaseBusiness },
   { label: 'Saved', icon: Bookmark },
@@ -118,6 +119,11 @@ const topNav = [
   'Opportunities',
   'For Educators',
 ]
+
+const topLinks: Partial<Record<string, Route>> = {
+  Home: routes.home,
+  'Explore Careers': routes.careers,
+}
 
 const infoPoints: { title: string; text: string; icon: LucideIcon }[] = [
   {
@@ -600,18 +606,24 @@ function App() {
 }
 
 /**
- * Portal chrome: dark-green sidebar + top bar. Navigation entries other than
- * "Student Profile" are visual placeholders until those pages exist.
+ * Portal chrome: dark-green sidebar + top bar. Entries with an `href` are
+ * real pages; the rest are visual placeholders until those pages exist.
  */
-function PortalShell({
+export function PortalShell({
   initial,
   children,
+  active = 'Student Profile',
+  tone = 'light',
 }: {
   initial: string
   children: ReactNode
+  active?: string
+  tone?: 'light' | 'dark'
 }) {
+  const topActive = active === 'Career Discovery' ? 'Explore Careers' : 'Home'
+
   return (
-    <div className="portal">
+    <div className={`portal ${tone === 'dark' ? 'portal--dark' : ''}`}>
       <aside className="side">
         <div className="brand">
           <LogoMark size={42} />
@@ -622,18 +634,25 @@ function PortalShell({
         </div>
 
         <nav className="side-nav" aria-label="Student portal">
-          {sideNav.map(({ label, icon: Icon, active }) => (
-            <a
-              key={label}
-              className={`side-link ${active ? 'active' : ''}`}
-              aria-current={active ? 'page' : undefined}
-              aria-disabled={active ? undefined : true}
-            >
-              <Icon size={22} strokeWidth={1.6} />
-              <span>{label}</span>
-              {active && <ChevronRight size={18} className="side-chevron" />}
-            </a>
-          ))}
+          {sideNav.map(({ label, icon: Icon, href }) => {
+            const isActive = label === active
+            return (
+              <a
+                key={label}
+                className={`side-link ${isActive ? 'active' : ''}`}
+                href={href}
+                onClick={href ? linkTo(href) : undefined}
+                aria-current={isActive ? 'page' : undefined}
+                aria-disabled={href ? undefined : true}
+              >
+                <Icon size={22} strokeWidth={1.6} />
+                <span>{label}</span>
+                {isActive && (
+                  <ChevronRight size={18} className="side-chevron" />
+                )}
+              </a>
+            )
+          })}
         </nav>
 
         <div className="side-foot" aria-hidden="true">
@@ -659,16 +678,22 @@ function PortalShell({
           </div>
 
           <nav className="top-nav" aria-label="Site">
-            {topNav.map((label, index) => (
-              <a
-                key={label}
-                className={index === 0 ? 'active' : ''}
-                aria-current={index === 0 ? 'page' : undefined}
-                aria-disabled={index === 0 ? undefined : true}
-              >
-                {label}
-              </a>
-            ))}
+            {topNav.map((label) => {
+              const href = topLinks[label]
+              const isActive = label === topActive
+              return (
+                <a
+                  key={label}
+                  className={isActive ? 'active' : ''}
+                  href={href}
+                  onClick={href ? linkTo(href) : undefined}
+                  aria-current={isActive ? 'page' : undefined}
+                  aria-disabled={href ? undefined : true}
+                >
+                  {label}
+                </a>
+              )
+            })}
           </nav>
 
           <div className="top-tools">

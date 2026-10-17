@@ -1,0 +1,1544 @@
+/* ==========================================================================
+   UdaanPath — Career Discovery
+   Dark emerald page inside the shared PortalShell (tone="dark").
+   ========================================================================== */
+
+/* ---------- Shared shell: real links, and the dark tone ------------------ */
+
+.side-link[href],
+.top-nav a[href] {
+  cursor: pointer;
+}
+
+.portal--dark {
+  --cd-bg: #03160e;
+  --cd-panel: rgba(5, 30, 20, 0.78);
+  --cd-panel-solid: #062217;
+  --cd-line: rgba(140, 255, 190, 0.14);
+  --cd-line-strong: rgba(140, 255, 190, 0.3);
+  --cd-ink: #eafff2;
+  --cd-muted: #a3c4b2;
+  --cd-faint: #6f9483;
+  --cd-mint: #6be7b2;
+  --cd-emerald: #3ee88a;
+
+  background: var(--cd-bg);
+  color: var(--cd-ink);
+}
+
+.portal--dark .portal-main {
+  container-type: inline-size;
+  background:
+    radial-gradient(ellipse 55% 35% at 35% 0%, rgba(62, 232, 138, 0.07), transparent 70%),
+    radial-gradient(ellipse 40% 45% at 100% 35%, rgba(52, 236, 220, 0.04), transparent 70%),
+    radial-gradient(ellipse 70% 30% at 50% 100%, rgba(62, 232, 138, 0.04), transparent 70%),
+    var(--cd-bg);
+}
+
+.portal--dark .topbar {
+  border-bottom-color: var(--cd-line);
+  background: rgba(3, 22, 14, 0.92);
+}
+
+.portal--dark .topbar-brand {
+  color: var(--cd-ink);
+}
+
+/* The shared top bar runs ~10px wide around 1280px viewports; tighten its
+   spacing on this page only so it never causes horizontal scrolling. */
+.portal--dark .topbar {
+  gap: 18px;
+}
+
+.portal--dark .top-nav {
+  gap: clamp(14px, 1.6vw, 34px);
+}
+
+.portal--dark .top-tools {
+  min-width: 0;
+}
+
+.portal--dark .top-search {
+  flex: 0 1 300px;
+  width: auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.portal--dark .top-nav a {
+  color: var(--cd-muted);
+}
+
+.portal--dark .top-nav a.active {
+  color: var(--cd-ink);
+}
+
+.portal--dark .top-nav a.active::after {
+  background: var(--cd-emerald);
+}
+
+.portal--dark .top-search,
+.portal--dark .top-lang {
+  border-color: var(--cd-line);
+  background: rgba(6, 34, 23, 0.9);
+  color: var(--cd-faint);
+}
+
+.portal--dark .top-search input {
+  color: var(--cd-ink);
+}
+
+.portal--dark .top-lang .on {
+  color: var(--cd-mint);
+}
+
+.portal--dark .top-lang .divider {
+  background: var(--cd-line);
+}
+
+.portal--dark .top-user {
+  color: var(--cd-muted);
+}
+
+.portal--dark .avatar {
+  background: #0b4a3a;
+  color: var(--cd-mint);
+  box-shadow: inset 0 0 0 1px rgba(107, 231, 178, 0.35);
+}
+
+/* ---------- Page grid ---------------------------------------------------- */
+
+.cd {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 320px;
+  grid-template-areas:
+    'explore explore details'
+    'suggest interests filters';
+  gap: 24px;
+  padding: 22px 28px 40px;
+}
+
+.cd :focus-visible {
+  outline: 2px solid var(--cd-mint);
+  outline-offset: 2px;
+}
+
+.cd .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.cd h1,
+.cd h2,
+.cd p {
+  margin: 0;
+}
+
+.cd ul,
+.cd ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cd button {
+  font: inherit;
+  color: inherit;
+}
+
+.cd-explore {
+  grid-area: explore;
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.cd-details {
+  grid-area: details;
+}
+
+.cd-suggest {
+  grid-area: suggest;
+  container-type: inline-size;
+}
+
+.cd-interests {
+  grid-area: interests;
+}
+
+.cd-filters {
+  grid-area: filters;
+}
+
+/* ---------- Header ------------------------------------------------------- */
+
+.cd-head {
+  position: relative;
+  padding-right: 170px;
+}
+
+.cd-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--cd-emerald);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.cd-head h1 {
+  margin-top: 10px;
+  font-family: var(--font-serif);
+  font-size: clamp(30px, 3.1vw, 46px);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.cd-head h1 em {
+  background: linear-gradient(100deg, #9dffcb, var(--cd-emerald) 60%, #34ecdc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-style: italic;
+  filter: drop-shadow(0 0 18px rgba(62, 232, 138, 0.35));
+}
+
+.cd-lede {
+  max-width: 620px;
+  margin-top: 10px;
+  color: var(--cd-muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.cd-constellation {
+  position: absolute;
+  top: 4px;
+  right: 1%;
+  width: 136px;
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.cd-constellation path {
+  fill: none;
+  stroke: rgba(168, 255, 207, 0.45);
+  stroke-width: 1.2;
+}
+
+.cd-constellation circle {
+  fill: #c8ffd9;
+  filter: drop-shadow(0 0 4px #6be7b2);
+}
+
+.cd-count {
+  margin-top: 10px;
+  padding-left: 4px;
+  color: var(--cd-faint);
+  font-size: 13px;
+}
+
+/* ---------- Pathway map -------------------------------------------------- */
+
+/* Every element in the map is positioned in the same 1000×652 box as the
+   SVG, so cards, nodes and chips sit exactly on their paths at any width. */
+.cd-map-frame {
+  position: relative;
+  margin-top: 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(140, 255, 190, 0.1);
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse 45% 55% at 30% 50%, rgba(62, 232, 138, 0.06), transparent 70%),
+    radial-gradient(ellipse 35% 45% at 88% 50%, rgba(52, 236, 220, 0.05), transparent 70%),
+    radial-gradient(rgba(168, 255, 207, 0.06) 1px, transparent 1.5px) 0 0 / 22px 22px,
+    rgba(2, 17, 11, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 0 80px rgba(0, 0, 0, 0.35);
+}
+
+.cd-map {
+  position: relative;
+  aspect-ratio: 1000 / 624;
+  container-type: inline-size;
+}
+
+.cd-paths {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.cd-paths path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cd-line {
+  stroke: var(--stroke);
+  stroke-width: 2.5;
+  opacity: 0.24;
+  transition: opacity 0.35s ease;
+}
+
+.cd-family-paths[data-active] .cd-line {
+  opacity: 0.5;
+}
+
+.cd-fork[data-state='match'] {
+  opacity: 0.75 !important;
+  stroke-width: 3;
+}
+
+.cd-fork[data-state='hidden'] {
+  opacity: 0.12 !important;
+  stroke-dasharray: 6 9;
+}
+
+/* Background depth: static contours and a soft pool of family light. */
+.cd-contours path {
+  fill: none;
+  stroke: rgba(140, 255, 190, 0.045);
+  stroke-width: 1;
+}
+
+.cd-family-glow {
+  opacity: 0.4;
+  transition: opacity 0.4s ease;
+}
+
+.cd-family-glow[data-active] {
+  opacity: 1;
+}
+
+/* Skill stations: a ring with a core that lights with its family. */
+.cd-station-ring {
+  fill: #03140d;
+  stroke: var(--stroke);
+  stroke-width: 2;
+  opacity: 0.5;
+  transition: opacity 0.35s ease;
+}
+
+.cd-station-core {
+  fill: var(--stroke);
+  opacity: 0.35;
+  transition: opacity 0.35s ease;
+}
+
+.cd-family-paths[data-active] .cd-station-ring,
+.cd-family-paths[data-active] .cd-station-core {
+  opacity: 1;
+}
+
+/* Where each fork meets its card. */
+.cd-terminal {
+  fill: #03140d;
+  stroke: var(--stroke);
+  stroke-width: 2;
+  opacity: 0.45;
+  transition: opacity 0.3s ease;
+}
+
+.cd-terminal[data-state='match'] {
+  opacity: 0.85;
+}
+
+.cd-terminal[data-state='hidden'] {
+  opacity: 0.15;
+}
+
+.cd-terminal[data-state='selected'] {
+  fill: var(--stroke);
+  opacity: 1;
+}
+
+/* Selected route: a broad, faint halo under a crisp core stroke. */
+.cd-route-halo {
+  stroke: var(--stroke);
+  stroke-width: 12;
+  opacity: 0.12;
+  animation: cd-halo 0.6s ease both;
+}
+
+.cd-route {
+  stroke: var(--stroke);
+  stroke-width: 4;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: cd-draw 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.cd-comet {
+  stroke: #ffffff;
+  stroke-width: 3.5;
+  stroke-dasharray: 0.04 1.1;
+  stroke-dashoffset: 0.04;
+  opacity: 0.7;
+  animation: cd-comet 3.2s linear 0.8s infinite;
+}
+
+/* ---- "Your interests" card at the root ---- */
+
+.cd-strengths {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  gap: 1cqw;
+  padding: 1.4cqw;
+  border: 1px solid var(--cd-line-strong);
+  border-radius: 1.6cqw;
+  background: var(--cd-panel-solid);
+  box-shadow: 0 0 24px rgba(62, 232, 138, 0.08);
+  transform: translateY(-50%);
+}
+
+.cd-strengths-title {
+  font-size: max(12px, 1.5cqw);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cd-strengths ul {
+  display: grid;
+  gap: 0.6cqw;
+}
+
+.cd-strengths li {
+  position: relative;
+  padding-left: 1.6cqw;
+  color: var(--cd-muted);
+  font-size: max(10px, 1.15cqw);
+}
+
+.cd-strengths li::before {
+  position: absolute;
+  top: 0.45em;
+  left: 0;
+  width: 0.8cqw;
+  height: 0.8cqw;
+  min-width: 6px;
+  min-height: 6px;
+  border-radius: 50%;
+  background: var(--cd-emerald);
+  box-shadow: 0 0 6px var(--cd-emerald);
+  content: '';
+}
+
+.cd-strengths li.more::before {
+  display: none;
+}
+
+.cd-strengths-empty {
+  color: var(--cd-faint);
+  font-size: max(10px, 1.1cqw);
+  line-height: 1.4;
+}
+
+.cd-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(107, 231, 178, 0.4);
+  border-radius: 10px;
+  color: var(--cd-mint);
+  font-size: max(11px, 1.1cqw);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cd-ghost:hover {
+  background: rgba(107, 231, 178, 0.1);
+}
+
+/* ---- Family nodes and labels ---- */
+
+.cd-family {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 1cqw;
+  transform: translateY(-50%);
+}
+
+.cd-family-node {
+  display: grid;
+  flex: none;
+  width: 6cqw;
+  height: 6cqw;
+  min-width: 38px;
+  min-height: 38px;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--from) 70%, transparent);
+  border-radius: 50%;
+  background: var(--cd-panel-solid);
+  color: var(--from);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--from) 35%, transparent);
+  transition: box-shadow 0.35s ease, border-color 0.35s ease;
+}
+
+.cd-family[data-active] .cd-family-node {
+  border-color: var(--from);
+  box-shadow:
+    0 0 26px color-mix(in srgb, var(--from) 65%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--from) 25%, transparent);
+}
+
+.cd-family-label {
+  display: grid;
+  gap: 0.25cqw;
+  padding: 0.75cqw 1.4cqw 0.8cqw;
+  border: 1px solid color-mix(in srgb, var(--from) 32%, transparent);
+  border-radius: 1.2cqw;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
+    #041a11;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.cd-family[data-active] .cd-family-label {
+  border-color: color-mix(in srgb, var(--from) 60%, transparent);
+}
+
+.cd-family-label strong {
+  color: color-mix(in srgb, var(--from) 70%, #ffffff);
+  font-size: max(12px, 1.45cqw);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cd-family-label span {
+  color: var(--cd-muted);
+  font-size: max(10px, 1.05cqw);
+  white-space: nowrap;
+}
+
+.cd-station-chip {
+  position: absolute;
+  z-index: 2;
+  padding: 0.35cqw 0.9cqw;
+  border: 1px solid var(--cd-line);
+  border-radius: 0.8cqw;
+  background: rgba(4, 22, 15, 0.92);
+  color: var(--cd-faint);
+  font-size: max(10px, 1cqw);
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+/* Skill stations need room to read; on narrower maps only the dots stay. */
+@container (max-width: 699px) {
+  .cd-station-chip {
+    display: none;
+  }
+}
+
+/* ---- Destination career cards ---- */
+
+.cd-dest li {
+  position: absolute;
+  z-index: 2;
+  transform: translateY(-50%);
+}
+
+.cd-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1.1cqw;
+  width: 100%;
+  height: 100%;
+  padding: 0 1.2cqw 0 1.5cqw;
+  overflow: hidden;
+  border: 1px solid rgba(140, 255, 190, 0.12);
+  border-radius: 1.3cqw;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--from) 9%, transparent), transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 45%),
+    #051d13;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 16px rgba(0, 0, 0, 0.25);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease,
+    opacity 0.25s ease;
+}
+
+/* Accent rail on the leading edge: quiet at rest, full when selected. */
+.cd-card::before {
+  position: absolute;
+  top: 18%;
+  bottom: 18%;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(var(--from), var(--to));
+  opacity: 0.35;
+  transition: opacity 0.25s ease, top 0.25s ease, bottom 0.25s ease;
+  content: '';
+}
+
+.cd-card:hover {
+  border-color: color-mix(in srgb, var(--to) 45%, transparent);
+}
+
+.cd-card:hover::before {
+  opacity: 0.7;
+}
+
+.cd-card[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--to) 75%, transparent);
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--from) 20%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 45%),
+    #06241a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 0 0 1px color-mix(in srgb, var(--to) 22%, transparent),
+    0 8px 22px rgba(0, 0, 0, 0.35),
+    0 0 16px color-mix(in srgb, var(--to) 18%, transparent);
+}
+
+.cd-card[aria-pressed='true']::before {
+  top: 0;
+  bottom: 0;
+  opacity: 1;
+}
+
+.cd-card[data-hidden] {
+  opacity: 0.45;
+}
+
+/* Icon in a gradient ring (the family colours) around a dark well. */
+.cd-card-icon {
+  display: grid;
+  flex: none;
+  width: 3.8cqw;
+  height: 3.8cqw;
+  min-width: 30px;
+  min-height: 30px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.9cqw;
+  background:
+    linear-gradient(#04170f, #04170f) padding-box,
+    linear-gradient(135deg, color-mix(in srgb, var(--from) 70%, transparent), color-mix(in srgb, var(--to) 35%, transparent)) border-box;
+  color: var(--from);
+  transition: background 0.25s ease;
+}
+
+.cd-card[aria-pressed='true'] .cd-card-icon {
+  background:
+    linear-gradient(color-mix(in srgb, var(--from) 18%, #04170f), color-mix(in srgb, var(--from) 18%, #04170f)) padding-box,
+    linear-gradient(135deg, var(--from), var(--to)) border-box;
+}
+
+.cd-card-text {
+  display: grid;
+  flex: 1;
+  gap: 0.4cqw;
+  min-width: 0;
+}
+
+.cd-card-text strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #eafff2;
+  font-size: max(11.5px, 1.35cqw);
+  font-weight: 680;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.cd-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cd-card-meta .cd-badge {
+  padding: 1px 7px;
+  font-size: max(9.5px, 0.95cqw);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.cd-card-arrow {
+  flex: none;
+  color: var(--cd-faint);
+  transition: color 0.25s ease;
+}
+
+.cd-card[aria-pressed='true'] .cd-card-arrow {
+  color: var(--to);
+}
+
+/* ---------- Badges ------------------------------------------------------- */
+
+.cd-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(140, 255, 190, 0.08);
+  color: var(--cd-muted);
+  font-size: max(10px, 1cqw);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cd-badge--match {
+  background: color-mix(in srgb, var(--to, #3ee88a) 18%, transparent);
+  color: color-mix(in srgb, var(--to, #3ee88a) 70%, #ffffff);
+}
+
+.cd-badge--accent {
+  background: color-mix(in srgb, var(--from) 20%, transparent);
+  color: color-mix(in srgb, var(--from) 65%, #ffffff);
+}
+
+.cd-badge--muted {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--cd-faint);
+}
+
+/* ---------- Stacked families (narrow) ----------------------------------- */
+
+.cd-families {
+  display: none;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.cd-family-block {
+  position: relative;
+  padding: 14px 14px 14px 22px;
+  border: 1px solid var(--cd-line);
+  border-radius: 18px;
+  background: var(--cd-panel);
+}
+
+/* The pathway becomes a glowing rail down the side of each family. */
+.cd-family-block::before {
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  left: 9px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(var(--from), var(--to));
+  opacity: 0.45;
+  content: '';
+}
+
+.cd-family-block[data-active]::before {
+  opacity: 1;
+  box-shadow: 0 0 10px var(--from);
+}
+
+.cd-family--static {
+  position: static;
+  gap: 12px;
+  transform: none;
+}
+
+.cd-family--static .cd-family-node {
+  width: 44px;
+  height: 44px;
+}
+
+.cd-family--static .cd-family-label {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.cd-family--static .cd-family-label strong {
+  font-size: 14px;
+}
+
+.cd-family--static .cd-family-label span {
+  font-size: 12px;
+  white-space: normal;
+}
+
+.cd-family-cards {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px !important;
+}
+
+.cd-family-cards .cd-card {
+  gap: 12px;
+  min-height: 62px;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+.cd-family-cards .cd-card-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.cd-family-cards .cd-card-text strong {
+  font-size: 14px;
+}
+
+.cd-family-cards .cd-badge {
+  font-size: 11px;
+}
+
+@container (max-width: 699px) {
+  .cd-map-frame {
+    display: none;
+  }
+
+  .cd-families {
+    display: grid;
+  }
+
+  .cd-constellation {
+    display: none;
+  }
+
+  .cd-head {
+    padding-right: 0;
+  }
+}
+
+/* ---------- Panels (details, suggestions, interests, filters) ----------- */
+
+.cd-panel,
+.cd-details {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--cd-line);
+  border-radius: 20px;
+  background: var(--cd-panel);
+}
+
+.cd-panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.cd-panel-head h2 {
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.cd-panel-head p {
+  margin-top: 3px;
+  color: var(--cd-faint);
+  font-size: 13px;
+}
+
+.cd-panel-icon {
+  flex: none;
+  color: var(--cd-emerald);
+}
+
+/* ---- Details ---- */
+
+.cd-details {
+  align-self: start;
+  display: grid;
+  gap: 14px;
+  border-color: color-mix(in srgb, var(--from) 30%, transparent);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--from) 8%, transparent);
+}
+
+.cd-details-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--cd-muted);
+  font-size: 14px;
+}
+
+.cd-icon-button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid var(--cd-line);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.25s, border-color 0.25s, color 0.25s;
+}
+
+.cd-icon-button:hover {
+  border-color: var(--cd-line-strong);
+}
+
+.cd-icon-button[aria-pressed='true'] {
+  border-color: var(--cd-mint);
+  background: rgba(107, 231, 178, 0.12);
+  color: var(--cd-mint);
+}
+
+.cd-details-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  animation: cd-fade 0.3s ease both;
+}
+
+.cd-details-icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--from) 26%, #04170f), #04170f 75%) padding-box,
+    linear-gradient(135deg, var(--from), color-mix(in srgb, var(--to) 50%, transparent)) border-box;
+  color: var(--from);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--from) 22%, transparent);
+}
+
+.cd-details h2 {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* ---- At a glance: catalogue figures as a scannable grid ---- */
+
+.cd-glance {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--cd-line);
+}
+
+.cd-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  animation: cd-fade 0.3s ease both;
+}
+
+.cd-stats div {
+  padding: 10px 12px;
+  border: 1px solid rgba(140, 255, 190, 0.1);
+  border-radius: 12px;
+  background: rgba(3, 20, 13, 0.7);
+}
+
+.cd-stats dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cd-faint);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.cd-stats dt svg {
+  color: var(--cd-mint);
+}
+
+.cd-stats dd {
+  margin: 4px 0 0;
+  color: var(--cd-ink);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.cd-stats dd span {
+  color: var(--cd-faint);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.cd-source {
+  color: var(--cd-faint);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* ---- Growth outlook inside Overview ---- */
+
+.cd-outlook {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--from) 8%, rgba(3, 20, 13, 0.7));
+}
+
+.cd-outlook svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--cd-mint);
+}
+
+.cd-outlook p {
+  color: #cde3d6;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.cd-outlook strong {
+  display: block;
+  color: var(--cd-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cd-details-official {
+  margin-top: 3px !important;
+  color: var(--cd-faint);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cd-details-sector {
+  margin-top: 4px !important;
+  color: var(--cd-muted);
+  font-size: 13px;
+}
+
+.cd-details-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px !important;
+}
+
+.cd-details-badges .cd-badge {
+  font-size: 11.5px;
+}
+
+.cd-details-note {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 210, 63, 0.1);
+  color: #ffe08a;
+  font-size: 13px;
+}
+
+.cd-tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--cd-line);
+}
+
+.cd-tabs button {
+  position: relative;
+  flex: none;
+  padding: 10px 6px;
+  border: 0;
+  background: none;
+  color: var(--cd-faint);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cd-tabs button[aria-selected='true'] {
+  color: var(--cd-ink);
+}
+
+.cd-tabs button[aria-selected='true']::after {
+  position: absolute;
+  right: 6px;
+  bottom: -1px;
+  left: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--cd-mint);
+  content: '';
+}
+
+.cd-tabpanel {
+  display: grid;
+  gap: 12px;
+  min-height: 168px;
+  align-content: start;
+  animation: cd-fade 0.25s ease both;
+}
+
+.cd-desc {
+  color: #cde3d6;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.cd-desc em {
+  color: var(--cd-mint);
+}
+
+.cd-facts {
+  display: grid;
+  gap: 10px;
+}
+
+.cd-facts li {
+  display: flex;
+  gap: 12px;
+  color: #cde3d6;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.cd-facts svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--cd-mint);
+}
+
+.cd-facts strong {
+  display: block;
+  color: var(--cd-ink);
+  font-size: 13px;
+}
+
+.cd-sub {
+  color: var(--cd-faint);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cd-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cd-tags li {
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--from) 45%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--from) 12%, transparent);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.cd-tags--soft li {
+  border-color: var(--cd-line);
+  background: transparent;
+  color: var(--cd-muted);
+  font-weight: 500;
+}
+
+.cd-stages {
+  display: grid;
+  gap: 10px;
+}
+
+.cd-stages li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  color: #cde3d6;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.cd-stages strong {
+  display: block;
+  color: var(--cd-ink);
+  font-size: 12.5px;
+}
+
+.cd-stage-dot {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid var(--cd-mint);
+  border-radius: 50%;
+  color: var(--cd-mint);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cd-fine {
+  color: var(--cd-faint);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.cd-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #8cffc0, var(--cd-emerald) 55%, #34ecdc);
+  box-shadow: 0 0 24px rgba(62, 232, 138, 0.3);
+  color: #022010 !important;
+  font-size: 15.5px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+  transition: box-shadow 0.25s ease, filter 0.25s ease;
+}
+
+.cd-cta:hover {
+  box-shadow: 0 0 36px rgba(62, 232, 138, 0.5);
+  filter: brightness(1.05);
+}
+
+/* ---- Suggestions ---- */
+
+.cd-suggest-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+
+.cd-suggest-card {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--to) 25%, transparent);
+  border-radius: 16px;
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--from) 12%, transparent), transparent 60%),
+    var(--cd-panel-solid);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.cd-suggest-card:hover,
+.cd-suggest-card[aria-pressed='true'] {
+  border-color: var(--to);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--to) 25%, transparent);
+}
+
+.cd-suggest-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cd-suggest-top .cd-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.cd-suggest-card strong {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.cd-suggest-sector {
+  color: var(--cd-muted);
+  font-size: 12.5px;
+}
+
+.cd-suggest-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-right: 34px;
+}
+
+.cd-suggest-tags span {
+  padding: 3px 8px;
+  border: 1px solid var(--cd-line);
+  border-radius: 7px;
+  color: var(--cd-muted);
+  font-size: 11.5px;
+}
+
+.cd-suggest-card .cd-badge {
+  font-size: 11px;
+}
+
+.cd-suggest-arrow {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 6px;
+  box-sizing: content-box;
+  border: 1px solid var(--cd-line-strong);
+  border-radius: 50%;
+  color: var(--cd-ink);
+}
+
+.cd-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cd-faint);
+  font-size: 14px;
+}
+
+/* Three across only when each card has room; otherwise a list. */
+@container (max-width: 619px) {
+  .cd-suggest-list {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  /* Compact rows: icon and badge on top, name and sector, no tags. */
+  .cd-suggest-card {
+    gap: 4px;
+    padding: 12px 52px 12px 12px;
+  }
+
+  .cd-suggest-tags {
+    display: none;
+  }
+
+  .cd-suggest-arrow {
+    top: 50%;
+    bottom: auto;
+    translate: 0 -50%;
+  }
+}
+
+/* ---- Interest chips ---- */
+
+.cd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cd-chip {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--cd-line-strong);
+  border-radius: 999px;
+  background: rgba(3, 22, 14, 0.6);
+  color: var(--cd-ink) !important;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+.cd-chip:hover {
+  border-color: rgba(107, 231, 178, 0.6);
+}
+
+.cd-chip[aria-pressed='true'] {
+  border-color: var(--cd-emerald);
+  background: rgba(62, 232, 138, 0.16);
+  box-shadow: 0 0 14px rgba(62, 232, 138, 0.25);
+}
+
+/* ---- Filters ---- */
+
+.cd-filters .cd-panel-head {
+  align-items: center;
+}
+
+.cd-clear {
+  margin-left: auto;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--cd-mint) !important;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cd-clear:disabled {
+  color: var(--cd-faint) !important;
+  cursor: default;
+}
+
+.cd-selects {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.cd-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--cd-line);
+  border-radius: 12px;
+  background: rgba(3, 22, 14, 0.6);
+  color: var(--cd-faint);
+}
+
+.cd-select[data-set] {
+  border-color: rgba(107, 231, 178, 0.55);
+  color: var(--cd-mint);
+}
+
+.cd-select:focus-within {
+  border-color: var(--cd-mint);
+}
+
+.cd-select select {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+  height: 42px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--cd-ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cd-select option {
+  background: #062217;
+  color: var(--cd-ink);
+}
+
+/* ---------- Responsive -------------------------------------------------- */
+
+@container (max-width: 1079px) {
+  .cd {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'explore explore'
+      'details suggest'
+      'interests filters';
+  }
+
+
+}
+
+@container (max-width: 759px) {
+  .cd {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'explore'
+      'details'
+      'suggest'
+      'interests'
+      'filters';
+    padding: 18px 16px 32px;
+  }
+}
+
+/* ---------- Motion ------------------------------------------------------ */
+
+@keyframes cd-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes cd-comet {
+  from {
+    stroke-dashoffset: 0.04;
+  }
+  to {
+    stroke-dashoffset: -1.06;
+  }
+}
+
+@keyframes cd-halo {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.12;
+  }
+}
+
+@keyframes cd-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cd *,
+  .cd *::before,
+  .cd *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .cd-route {
+    stroke-dashoffset: 0;
+  }
+
+  .cd-comet {
+    display: none;
+  }
+}
+
+/* ---------- "View details" link (stacked layouts only) ------------------ */
+
+.portal--dark .portal-main {
+  container-name: cd-main;
+}
+
+.cd-jump {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-left: 4px;
+  color: var(--cd-mint);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cd-jump:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@container cd-main (max-width: 1079px) {
+  .cd-jump {
+    display: inline-flex;
+  }
+}

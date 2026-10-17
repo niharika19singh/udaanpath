@@ -4,14 +4,17 @@ import type { MouseEvent } from 'react'
 export const routes = {
   home: '/',
   onboarding: '/onboarding',
+  careers: '/careers',
 } as const
 
 export type Route = (typeof routes)[keyof typeof routes]
 
-export const currentRoute = (): Route =>
-  window.location.pathname.replace(/\/+$/, '') === routes.onboarding
-    ? routes.onboarding
-    : routes.home
+const known = Object.values(routes) as string[]
+
+export const currentRoute = (): Route => {
+  const path = window.location.pathname.replace(/\/+$/, '') || routes.home
+  return known.includes(path) ? (path as Route) : routes.home
+}
 
 export const navigate = (path: Route) => {
   if (window.location.pathname !== path) {
