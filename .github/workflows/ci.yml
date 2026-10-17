@@ -50,7 +50,7 @@ jobs:
       - name: Run pytest
         env:
           APP_ENV: test
-          DATABASE_URL: sqlite:///:memory:
-          ENABLE_LLM: False
+          DATABASE_URL: "sqlite:///:memory:"
+          ENABLE_LLM: "False"
         run: |
           pytest -v backend/tests
