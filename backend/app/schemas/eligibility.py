@@ -8,6 +8,7 @@ class EligibilityCriterionResult(BaseModel):
     student_value: str
     required_value: str
     explanation: str
+    outcome: str = "unknown"
 
 
 class EligibilityCheckRequest(BaseModel):
@@ -20,10 +21,11 @@ class EligibilityCheckResponse(BaseModel):
     opportunity_id: int
     opportunity_title: str
     opportunity_type: str
-    status: str = Field(..., description="ELIGIBLE, INELIGIBLE, PARTIALLY_ELIGIBLE")
+    status: str = Field(..., description="ELIGIBLE, INELIGIBLE, PARTIALLY_ELIGIBLE, NEEDS_CONFIRMATION")
     match_score: float = Field(..., ge=0.0, le=100.0)
     passed_criteria: List[EligibilityCriterionResult]
     failed_criteria: List[EligibilityCriterionResult]
+    unknown_criteria: List[EligibilityCriterionResult] = Field(default_factory=list)
     required_documents: List[str]
     actionable_remediation: str
     official_portal_url: str
@@ -42,4 +44,5 @@ class BatchEligibilityCheckResponse(BaseModel):
     eligible_count: int
     partially_eligible_count: int
     ineligible_count: int
+    unknown_count: int = 0
     results: List[EligibilityCheckResponse]
