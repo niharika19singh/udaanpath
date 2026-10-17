@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CareerBase(BaseModel):
@@ -27,8 +27,7 @@ class CareerCreate(CareerBase):
 class CareerResponse(CareerBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CareerRecommendationItem(BaseModel):

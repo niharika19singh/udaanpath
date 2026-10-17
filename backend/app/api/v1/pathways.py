@@ -27,6 +27,7 @@ def get_pathway(id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/milestones/{id}/status", response_model=MilestoneResponse)
+@router.patch("/milestones/{id}/status", response_model=MilestoneResponse)
 def update_milestone_status(
     id: int,
     payload: MilestoneStatusUpdateRequest,
