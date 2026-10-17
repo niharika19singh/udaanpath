@@ -221,12 +221,12 @@ class LearningResource(Verifiable):
     level: Optional[str] = None
     subject: Optional[str] = None
     language: List[str] = Field(default_factory=lambda: ["English"])
-    cost: str = "free"
+    cost: str = "unknown"
 
     @field_validator("cost")
     @classmethod
     def _cost(cls, v):
         v = v.strip().lower()
-        if v not in {"free", "paid", "freemium"}:
-            raise ValueError("cost must be free, paid or freemium")
+        if v not in {"free", "paid", "freemium", "unknown"}:
+            raise ValueError("cost must be free, paid, freemium or unknown")
         return v

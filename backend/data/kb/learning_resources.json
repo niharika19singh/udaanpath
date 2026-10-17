@@ -7,13 +7,13 @@
     "level": "school to postgraduate",
     "subject": "multiple",
     "language": ["English"],
-    "cost": "free",
+    "cost": "unknown",
     "status": "needs_review",
     "is_sample": false,
-    "source_url": null,
+    "source_url": "https://swayam.gov.in/",
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Check: free access terms, language coverage, whether certificates cost money."
+    "notes": "The official home page advertises free courses and certifications, but it does not establish certificate or exam fees for every course. Check each course's terms."
   },
   {
     "slug": "diksha-portal",
@@ -23,13 +23,13 @@
     "level": "Std 1-12",
     "subject": "school curriculum",
     "language": ["English", "Hindi"],
-    "cost": "free",
+    "cost": "unknown",
     "status": "needs_review",
     "is_sample": false,
-    "source_url": null,
+    "source_url": "https://diksha.gov.in/",
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Check: which languages are actually available."
+    "notes": "The official site opens and lists learning resources in several languages. It does not establish the cost of all content; check the selected resource."
   },
   {
     "slug": "skill-india-digital",
@@ -39,12 +39,12 @@
     "level": "vocational",
     "subject": "skills and vocational courses",
     "language": ["English", "Hindi"],
-    "cost": "freemium",
+    "cost": "unknown",
     "status": "needs_review",
     "is_sample": false,
-    "source_url": null,
+    "source_url": "https://www.skillindiadigital.gov.in/",
     "last_verified_on": null,
     "verified_by": null,
-    "notes": "Check: which courses are free and which charge fees."
+    "notes": "The official site describes free digital CV creation and skill courses, but does not state the cost of every course or certification. Check each listing."
   }
 ]

@@ -9,9 +9,11 @@ class MilestoneBase(BaseModel):
     title: str
     description: str
     duration_weeks: int
+    duration_is_suggestion: bool = True
     skills_to_acquire: List[str] = Field(default_factory=list)
     recommended_certification: Optional[str] = None
     estimated_cost_inr: float = 0.0
+    estimated_cost_is_unknown: bool = True
     free_alternative_resource: str
     resource_url: str
     status: str = Field(default="not_started", description="not_started, in_progress, completed")
@@ -37,6 +39,7 @@ class PathwayResponse(BaseModel):
     career_title: str
     total_estimated_duration_months: int
     total_estimated_cost_inr: float
+    total_estimated_cost_is_unknown: bool = True
     free_alternative_available: bool
     weekly_study_hours: int
     is_active: bool

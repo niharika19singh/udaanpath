@@ -43,6 +43,7 @@ class CareerRecommendationItem(BaseModel):
     entry_qualification: str
     key_skills: List[str]
     financial_barrier: str
+    alternative_pathways: List[str] = Field(default_factory=list)
 
 
 class CareerRecommendationRequest(BaseModel):

@@ -52,8 +52,19 @@ def test_generate_and_get_pathway(client: TestClient, db_session: Session):
 
     assert data["student_id"] == student_id
     assert data["career_id"] == career_id
-    assert data["free_alternative_available"] is True
+    assert data["free_alternative_available"] is False
+    assert data["total_estimated_cost_is_unknown"] is True
     assert len(data["milestones"]) == 4  # 4-stage progression
+    resource_path = Path(__file__).parent.parent / "data" / "kb" / "learning_resources.json"
+    with open(resource_path, "r", encoding="utf-8") as resource_file:
+        resource_urls = {item["url"] for item in json.load(resource_file)}
+    assert all(item["title"].startswith("Suggested learning activity") for item in data["milestones"])
+    assert all("Suggestion only" in item["description"] for item in data["milestones"])
+    assert all(item["recommended_certification"] is None for item in data["milestones"])
+    assert all(item["estimated_cost_inr"] == 0.0 and item["estimated_cost_is_unknown"] for item in data["milestones"])
+    assert all(item["duration_is_suggestion"] for item in data["milestones"])
+    assert all(item["resource_url"] in resource_urls for item in data["milestones"])
+    assert all("cost unknown" in item["free_alternative_resource"] for item in data["milestones"])
 
     stages = [m["stage"] for m in data["milestones"]]
     assert stages == ["foundational", "intermediate", "advanced", "job_ready"]

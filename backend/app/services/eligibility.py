@@ -1,16 +1,21 @@
-from typing import List, Optional
-from sqlalchemy.orm import Session
+import json
+from datetime import date
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from fastapi import HTTPException, status
-from app.models.profile import StudentProfile
+from sqlalchemy.orm import Session
+
 from app.models.opportunity import Opportunity
-from app.repositories.profile import ProfileRepository
+from app.models.profile import StudentProfile
 from app.repositories.opportunity import OpportunityRepository
+from app.repositories.profile import ProfileRepository
 from app.schemas.eligibility import (
-    EligibilityCriterionResult,
+    BatchEligibilityCheckRequest,
+    BatchEligibilityCheckResponse,
     EligibilityCheckRequest,
     EligibilityCheckResponse,
-    BatchEligibilityCheckRequest,
-    BatchEligibilityCheckResponse
+    EligibilityCriterionResult,
 )
 
 
@@ -20,182 +25,144 @@ class EligibilityEngine:
         self.profile_repo = ProfileRepository(db)
         self.opp_repo = OpportunityRepository(db)
 
+    def _get_curated_opportunity(self, slug: str) -> Optional[Dict[str, Any]]:
+        path = Path(__file__).resolve().parents[2] / "data" / "kb" / "opportunities.json"
+        try:
+            with path.open("r", encoding="utf-8") as data_file:
+                records = json.load(data_file)
+        except (OSError, json.JSONDecodeError):
+            return None
+        return next((item for item in records if item.get("slug") == slug), None)
+
+    def _is_record_trusted(self, record: Optional[Dict[str, Any]]) -> bool:
+        return bool(
+            record
+            and record.get("status") == "verified"
+            and record.get("eligibility_confirmed") is True
+            and record.get("source_url")
+            and record.get("last_verified_on")
+            and record.get("verified_by")
+        )
+
     def evaluate(self, student: StudentProfile, opportunity: Opportunity) -> EligibilityCheckResponse:
-        passed_rules: List[EligibilityCriterionResult] = []
-        failed_rules: List[EligibilityCriterionResult] = []
+        passed: List[EligibilityCriterionResult] = []
+        failed: List[EligibilityCriterionResult] = []
+        unknown: List[EligibilityCriterionResult] = []
+        record = self._get_curated_opportunity(opportunity.slug) or {}
+        trusted = self._is_record_trusted(record)
 
-        total_weight = 0.0
-        earned_weight = 0.0
+        raw_deadline = record.get("deadline")
+        try:
+            deadline = date.fromisoformat(raw_deadline) if raw_deadline else None
+        except (TypeError, ValueError):
+            deadline = None
+        expired = record.get("status") == "expired" or (deadline is not None and deadline < date.today())
 
-        # Rule 1: Family Annual Income Ceiling
-        if opportunity.income_ceiling is not None:
-            total_weight += 25.0
-            req_str = f"<= ₹{opportunity.income_ceiling:,.0f} per annum"
-            actual_str = f"₹{student.annual_family_income:,.0f} per annum"
-            if student.annual_family_income <= opportunity.income_ceiling:
-                earned_weight += 25.0
-                passed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Income Ceiling",
-                    passed=True,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Annual family income ({actual_str}) is within the permissible limit of {req_str}."
-                ))
+        def add_result(name: str, outcome: str, current: Any, requirement: Any, explanation: str) -> None:
+            result = EligibilityCriterionResult(
+                criterion_name=name,
+                passed=outcome == "met",
+                outcome=outcome,
+                student_value="unknown" if current is None else str(current),
+                required_value="unknown" if requirement is None else str(requirement),
+                explanation=explanation,
+            )
+            if outcome == "met":
+                passed.append(result)
+            elif outcome == "unmet":
+                failed.append(result)
             else:
-                failed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Income Ceiling",
-                    passed=False,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Annual family income ({actual_str}) exceeds the maximum permissible limit of {req_str}."
-                ))
+                unknown.append(result)
 
-        # Rule 2: Age Range
-        if opportunity.min_age is not None or opportunity.max_age is not None:
-            total_weight += 15.0
-            min_a = opportunity.min_age or 0
-            max_a = opportunity.max_age or 100
-            req_str = f"{min_a} - {max_a} years"
-            actual_str = f"{student.age} years"
-            if min_a <= student.age <= max_a:
-                earned_weight += 15.0
-                passed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Age Eligibility",
-                    passed=True,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Student age ({actual_str}) falls strictly within the eligible range ({req_str})."
-                ))
+        if expired:
+            add_result("Record status", "unmet", record.get("status"), "active opportunity", "This opportunity is expired or its confirmed deadline has passed.")
+        elif trusted:
+            add_result("Record status", "met", record.get("status"), "reviewed record with confirmed eligibility", "The record has been reviewed and its eligibility rules are confirmed.")
+        else:
+            add_result("Record status", "unknown", record.get("status") or "not found", "reviewed record with confirmed eligibility", "Not enough information to confirm eligibility because this record has not been verified.")
+
+        def evaluate_rule(name: str, current: Any, requirement: Any, compare, display_requirement: str) -> None:
+            if requirement is None:
+                return
+            if not trusted:
+                add_result(name, "unknown", current, display_requirement, "Not enough information to confirm eligibility because this rule is not verified against an official source.")
+            elif current is None or (isinstance(current, str) and not current.strip()):
+                add_result(name, "unknown", None, display_requirement, "Not enough information to confirm eligibility because profile information is missing.")
+            elif compare(current, requirement):
+                add_result(name, "met", current, display_requirement, "The available profile information matches this confirmed criterion.")
             else:
-                failed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Age Eligibility",
-                    passed=False,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Student age ({actual_str}) does not meet the required age bracket ({req_str})."
-                ))
+                add_result(name, "unmet", current, display_requirement, "The available profile information does not match this confirmed criterion.")
 
-        # Rule 3: Gender Specificity
-        allowed_genders = [g.lower() for g in (opportunity.allowed_genders or ["all"])]
-        if "all" not in allowed_genders:
-            total_weight += 25.0
-            req_str = ", ".join(opportunity.allowed_genders)
-            actual_str = student.gender.title()
-            if student.gender.lower() in allowed_genders:
-                earned_weight += 25.0
-                passed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Gender Criteria",
-                    passed=True,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Applicant gender ({actual_str}) matches targeted scheme category ({req_str})."
-                ))
-            else:
-                failed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Gender Criteria",
-                    passed=False,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Scheme is exclusively reserved for {req_str}. Applicant is {actual_str}."
-                ))
+        allowed_genders = record.get("allowed_genders", ["all"])
+        allowed_categories = record.get("allowed_categories", ["ALL"])
+        allowed_education = record.get("eligible_education_levels", ["all"])
+        allowed_states = record.get("states", ["all"])
+        allowed_streams = record.get("eligible_streams", ["all"])
 
-        # Rule 4: Caste / Social Category
-        allowed_categories = [c.upper() for c in (opportunity.allowed_categories or ["all"])]
-        if "ALL" not in allowed_categories:
-            total_weight += 15.0
-            req_str = ", ".join(opportunity.allowed_categories)
-            actual_str = student.category.upper()
-            if student.category.upper() in allowed_categories:
-                earned_weight += 15.0
-                passed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Social Category / Caste",
-                    passed=True,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Student category ({actual_str}) is explicitly recognized under target beneficiaries ({req_str})."
-                ))
-            else:
-                failed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Social Category / Caste",
-                    passed=False,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Scheme targets categories: {req_str}. Applicant category is {actual_str}."
-                ))
+        evaluate_rule(
+            "Income Ceiling", student.annual_family_income, record.get("income_ceiling"),
+            lambda value, ceiling: value <= ceiling, "annual income ceiling",
+        )
 
-        # Rule 5: Academic Marks Threshold
-        if opportunity.min_marks_percentage is not None:
-            total_weight += 10.0
-            req_str = f">= {opportunity.min_marks_percentage:.1f}%"
-            actual_str = f"{student.percentage_marks:.1f}%"
-            if student.percentage_marks >= opportunity.min_marks_percentage:
-                earned_weight += 10.0
-                passed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Minimum Academic Marks",
-                    passed=True,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Academic score of {actual_str} satisfies minimum benchmark of {req_str}."
-                ))
-            else:
-                failed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Minimum Academic Marks",
-                    passed=False,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Academic score of {actual_str} is below the required {req_str}."
-                ))
+        min_age, max_age = record.get("min_age"), record.get("max_age")
+        if min_age is not None or max_age is not None:
+            evaluate_rule(
+                "Age Eligibility", student.age, (min_age, max_age),
+                lambda value, bounds: (bounds[0] is None or value >= bounds[0]) and (bounds[1] is None or value <= bounds[1]),
+                "{} to {} years".format(min_age if min_age is not None else "no lower limit", max_age if max_age is not None else "no upper limit"),
+            )
 
-        # Rule 6: Education Qualification Level
-        allowed_edu = [e.lower() for e in (opportunity.eligible_education_levels or ["all"])]
-        if "all" not in allowed_edu:
-            total_weight += 10.0
-            req_str = ", ".join([e.replace("_", " ").title() for e in opportunity.eligible_education_levels])
-            actual_str = student.education_level.replace("_", " ").title()
-            if student.education_level.lower() in allowed_edu:
-                earned_weight += 10.0
-                passed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Education Qualification",
-                    passed=True,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Current education stage ({actual_str}) matches eligible programs ({req_str})."
-                ))
-            else:
-                failed_rules.append(EligibilityCriterionResult(
-                    criterion_name="Education Qualification",
-                    passed=False,
-                    student_value=actual_str,
-                    required_value=req_str,
-                    explanation=f"Eligible education levels are {req_str}. Applicant is currently at {actual_str}."
-                ))
+        rules = [
+            ("Gender Criteria", student.gender, allowed_genders, lambda value, allowed: value.lower() in [item.lower() for item in allowed]),
+            ("Social Category / Caste", student.category, allowed_categories, lambda value, allowed: value.upper() in [item.upper() for item in allowed]),
+            ("Education Qualification", student.education_level, allowed_education, lambda value, allowed: value.lower() in [item.lower() for item in allowed]),
+            ("State / Domicile", student.state, allowed_states, lambda value, allowed: value.lower() in [item.lower() for item in allowed]),
+            ("Stream", student.stream, allowed_streams, lambda value, allowed: value.lower() in [item.lower() for item in allowed]),
+        ]
+        for name, current, allowed, compare in rules:
+            if allowed and not all(item.lower() == "all" for item in allowed):
+                evaluate_rule(name, current, allowed, compare, ", ".join(allowed))
 
-        # If opportunity had no restrictive rules, default full score
-        if total_weight == 0.0:
-            match_percentage = 100.0
+        evaluate_rule(
+            "Minimum Academic Marks", student.percentage_marks, record.get("min_marks_percentage"),
+            lambda value, minimum: value >= minimum, "minimum marks percentage",
+        )
+
+        if deadline is None:
+            add_result("Application Deadline", "unknown", None, record.get("deadline_note") or "confirmed deadline", "Not enough information to confirm the current application deadline.")
+        elif expired:
+            add_result("Application Deadline", "unmet", date.today().isoformat(), deadline.isoformat(), "The confirmed application deadline has passed.")
+        elif trusted:
+            add_result("Application Deadline", "met", date.today().isoformat(), deadline.isoformat(), "The confirmed deadline has not passed.")
+        else:
+            add_result("Application Deadline", "unknown", date.today().isoformat(), deadline.isoformat(), "The deadline cannot be trusted until this opportunity is verified.")
+
+        for criterion in record.get("other_criteria", []):
+            add_result("Human confirmation", "unknown", None, criterion, "A person must confirm this requirement on the official source.")
+
+        known_count = len(passed) + len(failed)
+        score = round((len(passed) / known_count) * 100.0, 1) if known_count else 0.0
+        hard_failures = {
+            "Record status", "Application Deadline", "Gender Criteria", "Social Category / Caste",
+            "Education Qualification", "State / Domicile", "Stream",
+        }
+        if expired or any(item.criterion_name in hard_failures for item in failed) or (known_count and score < 50.0):
+            final_status = "INELIGIBLE"
+        elif failed:
+            final_status = "PARTIALLY_ELIGIBLE"
+        elif unknown or not trusted:
+            final_status = "NEEDS_CONFIRMATION"
+        else:
             final_status = "ELIGIBLE"
-        else:
-            match_percentage = round((earned_weight / total_weight) * 100.0, 1)
 
-            # Determine deterministic final status
-            has_gender_failure = any(r.criterion_name == "Gender Criteria" for r in failed_rules)
-            has_category_failure = any(r.criterion_name == "Social Category / Caste" for r in failed_rules)
-
-            if len(failed_rules) == 0:
-                final_status = "ELIGIBLE"
-            elif has_gender_failure or has_category_failure or match_percentage < 50.0:
-                final_status = "INELIGIBLE"
-            else:
-                final_status = "PARTIALLY_ELIGIBLE"
-
-        # Actionable next steps / remediation
         if final_status == "ELIGIBLE":
-            actionable = f"Apply directly via official portal ({opportunity.official_portal_url}). Ensure all required documents are ready for verification."
+            actionable = "The confirmed criteria match the profile. Check the official portal for current application steps and documents."
+        elif final_status == "NEEDS_CONFIRMATION":
+            actionable = "Not enough information to confirm eligibility. Review the official source and confirm the unknown criteria before applying."
         elif final_status == "PARTIALLY_ELIGIBLE":
-            missing_names = ", ".join([f.criterion_name for f in failed_rules])
-            actionable = f"Review criteria ({missing_names}). If eligible under exemptions or updated marksheets/income certificates, proceed with application."
+            actionable = "Review the criteria marked unmet and confirm any remaining unknown requirements on the official source."
         else:
-            actionable = "Criteria not met. Explore alternative schemes or corporate CSR opportunities matched to your profile."
+            actionable = "At least one confirmed requirement is not met, or the opportunity is expired. Do not treat this as an eligible match."
 
         return EligibilityCheckResponse(
             student_id=student.id,
@@ -203,70 +170,51 @@ class EligibilityEngine:
             opportunity_title=opportunity.title,
             opportunity_type=opportunity.type,
             status=final_status,
-            match_score=match_percentage,
-            passed_criteria=passed_rules,
-            failed_criteria=failed_rules,
-            required_documents=opportunity.required_documents or [],
+            match_score=score,
+            passed_criteria=passed,
+            failed_criteria=failed,
+            unknown_criteria=unknown,
+            required_documents=opportunity.required_documents or [] if trusted else [],
             actionable_remediation=actionable,
             official_portal_url=opportunity.official_portal_url,
-            verification_date=opportunity.verification_date
+            verification_date=opportunity.verification_date if trusted else "unknown",
         )
 
     def check_single(self, req: EligibilityCheckRequest) -> EligibilityCheckResponse:
         student = self.profile_repo.get_by_id(req.student_id)
         if not student:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Student profile with id {req.student_id} not found."
-            )
-
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Student profile with id {req.student_id} not found.")
         opportunity = self.opp_repo.get_by_id(req.opportunity_id)
         if not opportunity:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Opportunity with id {req.opportunity_id} not found."
-            )
-
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Opportunity with id {req.opportunity_id} not found.")
         return self.evaluate(student, opportunity)
 
     def check_batch(self, req: BatchEligibilityCheckRequest) -> BatchEligibilityCheckResponse:
         student = self.profile_repo.get_by_id(req.student_id)
         if not student:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Student profile with id {req.student_id} not found."
-            )
-
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Student profile with id {req.student_id} not found.")
         if req.opportunity_ids:
-            opportunities = [self.opp_repo.get_by_id(oid) for oid in req.opportunity_ids]
-            opportunities = [o for o in opportunities if o is not None]
+            opportunities = [self.opp_repo.get_by_id(item_id) for item_id in req.opportunity_ids]
+            opportunities = [item for item in opportunities if item is not None]
         else:
             opportunities = self.opp_repo.get_all(limit=100, type=req.opportunity_type)
 
-        results: List[EligibilityCheckResponse] = []
-        eligible_count = 0
-        partially_eligible_count = 0
-        ineligible_count = 0
-
-        for opp in opportunities:
-            eval_res = self.evaluate(student, opp)
-            if eval_res.status == "ELIGIBLE":
-                eligible_count += 1
-            elif eval_res.status == "PARTIALLY_ELIGIBLE":
-                partially_eligible_count += 1
-            else:
-                ineligible_count += 1
-            results.append(eval_res)
-
-        # Sort results: ELIGIBLE first, then PARTIALLY_ELIGIBLE, then INELIGIBLE
-        status_rank = {"ELIGIBLE": 1, "PARTIALLY_ELIGIBLE": 2, "INELIGIBLE": 3}
-        results.sort(key=lambda x: (status_rank.get(x.status, 4), -x.match_score))
-
+        results = [self.evaluate(student, item) for item in opportunities]
+        status_values = {
+            "eligible": "ELIGIBLE",
+            "partially_eligible": "PARTIALLY_ELIGIBLE",
+            "ineligible": "INELIGIBLE",
+            "unknown": "NEEDS_CONFIRMATION",
+        }
+        counts = {name: sum(item.status == value for item in results) for name, value in status_values.items()}
+        rank = {"ELIGIBLE": 1, "PARTIALLY_ELIGIBLE": 2, "NEEDS_CONFIRMATION": 3, "INELIGIBLE": 4}
+        results.sort(key=lambda item: (rank.get(item.status, 5), -item.match_score))
         return BatchEligibilityCheckResponse(
             student_id=student.id,
             total_evaluated=len(results),
-            eligible_count=eligible_count,
-            partially_eligible_count=partially_eligible_count,
-            ineligible_count=ineligible_count,
-            results=results
+            eligible_count=counts["eligible"],
+            partially_eligible_count=counts["partially_eligible"],
+            ineligible_count=counts["ineligible"],
+            unknown_count=counts["unknown"],
+            results=results,
         )
