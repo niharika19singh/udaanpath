@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
@@ -73,6 +75,7 @@ class PathwayService:
                     "resource_url": "https://www.apprenticeshipindia.gov.in"
                 }
             ]
+
         elif "data" in career_title.lower() or category == "corporate_tech":
             return [
                 {
@@ -177,6 +180,24 @@ class PathwayService:
                 }
             ]
 
+    def _prepare_suggested_templates(self, templates: List[Dict[str, Any]], category: str) -> List[Dict[str, Any]]:
+        data_path = Path(__file__).resolve().parents[2] / "data" / "kb" / "learning_resources.json"
+        with data_path.open("r", encoding="utf-8") as data_file:
+            resources = json.load(data_file)
+        resource_slug = "skill-india-digital" if category == "vocational_skilled_trades" else "swayam-portal"
+        resource = next((item for item in resources if item.get("slug") == resource_slug), None)
+        if resource is None:
+            raise ValueError(f"Learning resource {resource_slug} is missing from the knowledge base")
+
+        for index, template in enumerate(templates, start=1):
+            template["title"] = f"Suggested learning activity {index}"
+            template["description"] = "Suggestion only; this is not a verified course, qualification, or job requirement. Check the linked provider for current details."
+            template["recommended_certification"] = None
+            template["estimated_cost_inr"] = 0.0
+            template["free_alternative_resource"] = f"Resource option (cost unknown): {resource['title']}. Check course-specific fees."
+            template["resource_url"] = resource["url"]
+        return templates
+
     def generate_pathway(self, req: PathwayGenerateRequest) -> Pathway:
         student = self.profile_repo.get_by_id(req.student_id)
         if not student:
@@ -197,7 +218,10 @@ class PathwayService:
         if existing:
             return existing
 
-        templates = self._build_milestone_templates(career.title, career.category, career.key_skills or [])
+        templates = self._prepare_suggested_templates(
+            self._build_milestone_templates(career.title, career.category, career.key_skills or []),
+            career.category,
+        )
         total_weeks = sum(t["duration_weeks"] for t in templates)
         total_months = max(3, round(total_weeks / 4))
         total_cost = sum(t["estimated_cost_inr"] for t in templates)
@@ -208,7 +232,7 @@ class PathwayService:
             career_title=career.title,
             total_estimated_duration_months=total_months,
             total_estimated_cost_inr=total_cost,
-            free_alternative_available=True,
+            free_alternative_available=False,
             weekly_study_hours=req.weekly_study_hours,
             is_active=True
         )
