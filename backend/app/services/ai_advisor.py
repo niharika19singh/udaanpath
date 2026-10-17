@@ -1,4 +1,6 @@
 from typing import List, Dict, Any, Optional
+from pathlib import Path
+from typing import List, Dict, Any, Optional
 import json
 import httpx
 from sqlalchemy.orm import Session
@@ -10,6 +12,9 @@ from app.models.pathway import Pathway
 from app.repositories.profile import ProfileRepository
 from app.repositories.pathway import PathwayRepository
 from app.repositories.career import CareerRepository
+from app.schemas.opportunity import OpportunityMatchRequest
+from app.services.opportunity import OpportunityService
+from app.services.recommendation import RecommendationService
 from app.schemas.ai import (
     AINarrativeAdviceRequest,
     AINarrativeAdviceResponse,
@@ -25,58 +30,77 @@ class AIAdvisorService:
         self.pathway_repo = PathwayRepository(db)
         self.career_repo = CareerRepository(db)
 
-    def _generate_rule_based_advice(self, student: StudentProfile, focus_area: Optional[str] = None) -> Dict[str, Any]:
-        """Deterministic rule-based career guidance generation as a guaranteed fallback."""
-        name = student.full_name
-        stream_name = student.stream.replace('_', ' ').title()
-        edu_name = student.education_level.replace('_', ' ').title()
-        constraint = student.financial_constraint
+    def _load_kb_records(self, filename: str) -> List[Dict[str, Any]]:
+        path = Path(__file__).resolve().parents[2] / "data" / "kb" / filename
+        try:
+            with path.open("r", encoding="utf-8") as data_file:
+                return json.load(data_file)
+        except (OSError, json.JSONDecodeError):
+            return []
 
-        # Dynamic template selection based on socioeconomic and academic context
-        if constraint in ["high", "extreme"]:
-            narrative = (
-                f"Hello {name}, based on your current education ({edu_name} in {stream_name}) and economic background, "
-                f"our priority is directing you towards high-return, subsidized pathways. Your profile shows promising aptitude. "
-                f"Rather than pursuing expensive unstructured degrees, we strongly recommend combining zero-cost government skilling "
-                f"(such as PMKVY 4.0 or NAPS Apprenticeships) with foundational online certifications via SWAYAM. "
-                f"Securing a state stipend or post-matric DBT scholarship will ensure financial stability while you build workplace-ready skills."
-            )
-            takeaways = [
-                "Prioritize government-subsidized apprenticeship programs with monthly stipends.",
-                "Ensure your Aadhaar is linked to your bank account for Direct Benefit Transfer (DBT).",
-                "Utilize free national learning platforms like SWAYAM, NPTEL, and Skill India Digital.",
-                "Target vocational trades or entry-level tech roles with under 6 months training turnaround."
-            ]
-            actions = [
-                "Register on the National Scholarship Portal (scholarships.gov.in) before upcoming deadlines.",
-                "Gather income certificate from your local Tehsildar or revenue sub-division.",
-                "Complete the Foundational stage on your active UdaanPath learning roadmap."
-            ]
-        else:
-            narrative = (
-                f"Hello {name}, your background in {stream_name} provides a robust launching pad for high-growth sectors. "
-                f"With consistent practice and structured milestones, you can transition smoothly into in-demand technical, "
-                f"corporate, or creative specializations. Focus on building practical, verifiable proof-of-work "
-                f"rather than passive rote memorization."
-            )
-            takeaways = [
-                "Focus on building 2-3 tangible capstone projects to showcase in interviews.",
-                "Pursue recognized industry certifications alongside your primary coursework.",
-                "Network with alumni and sector practitioners on professional forums.",
-                "Dedicate at least 10-15 hours weekly to milestone skill drills."
-            ]
-            actions = [
-                "Follow the stage-by-stage learning roadmap generated for your chosen career track.",
-                "Build a publicly shareable portfolio or digital repository of your assignments.",
-                "Practice communication and domain aptitude tests regularly."
-            ]
-
+    def _verified_records(self, filename: str, eligibility_required: bool = False) -> Dict[str, Dict[str, Any]]:
+        records = self._load_kb_records(filename)
         return {
-            "narrative_advice": narrative,
-            "key_takeaways": takeaways,
+            item["slug"]: item
+            for item in records
+            if item.get("status") == "verified"
+            and not item.get("is_sample", False)
+            and item.get("source_url")
+            and item.get("last_verified_on")
+            and item.get("verified_by")
+            and (not eligibility_required or item.get("eligibility_confirmed") is True)
+        }
+
+    def _build_rule_engine_context(self, student: StudentProfile) -> Dict[str, Any]:
+        verified_careers = self._verified_records("careers.json")
+        verified_opportunities = self._verified_records("opportunities.json", eligibility_required=True)
+        career_results = []
+        opportunity_results = []
+
+        if verified_careers:
+            recommendations = RecommendationService(self.db).recommend_careers(student.id, limit=5)
+            for result in recommendations.recommendations:
+                career = self.career_repo.get_by_id(result.career_id)
+                if career and career.slug in verified_careers:
+                    career_results.append({"title": result.title, "score": result.match_score, "reason": result.rationale})
+
+        if verified_opportunities:
+            matches = OpportunityService(self.db).match_opportunities(
+                OpportunityMatchRequest(student_id=student.id, limit=10)
+            )
+            for result in matches.opportunities:
+                slug = result.opportunity.slug
+                if slug in verified_opportunities:
+                    opportunity_results.append({
+                        "title": result.opportunity.title,
+                        "status": result.eligibility_status,
+                        "score": result.match_score,
+                        "reasons": result.reasons,
+                        "source_url": str(verified_opportunities[slug]["source_url"]),
+                    })
+
+        return {"careers": career_results, "opportunities": opportunity_results}
+
+    def _generate_rule_based_advice(self, student: StudentProfile, focus_area: Optional[str] = None) -> Dict[str, Any]:
+        sources = [
+            item for item in self._load_kb_records("opportunities.json")
+            if not item.get("is_sample") and item.get("official_url")
+        ]
+        actions = [
+            "Check the official details for {}: {}".format(item["title"], item["official_url"])
+            for item in sources[:3]
+        ]
+        if not actions:
+            actions = ["Check the opportunity provider's official page for current eligibility, dates, and costs."]
+        return {
+            "narrative_advice": "Eligibility, benefits, deadlines, and course costs are unknown until confirmed on official provider pages. Career matches and roadmap activities are suggestions, not a guarantee of admission, funding, or employment.",
+            "key_takeaways": [
+                "Unknown eligibility details must be checked on the official programme page.",
+                "This guidance does not guarantee an award, admission, or job.",
+            ],
             "suggested_action_items": actions,
             "is_ai_generated": False,
-            "provider": "rule_engine_fallback"
+            "provider": "rule_engine_fallback",
         }
 
     def _call_gemini_api(self, prompt: str) -> Optional[str]:
@@ -84,7 +108,7 @@ class AIAdvisorService:
         if not settings.ENABLE_LLM or not settings.GEMINI_API_KEY:
             return None
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent"
         payload = {
             "contents": [
                 {
@@ -101,7 +125,7 @@ class AIAdvisorService:
 
         try:
             with httpx.Client(timeout=settings.LLM_TIMEOUT_SECONDS) as client:
-                res = client.post(url, json=payload)
+                res = client.post(url, headers={"x-goog-api-key": settings.GEMINI_API_KEY}, json=payload)
                 if res.status_code == 200:
                     data = res.json()
                     candidates = data.get("candidates", [])
@@ -122,38 +146,23 @@ class AIAdvisorService:
                 detail=f"Student profile with id {req.student_id} not found."
             )
 
-        # Attempt Gemini LLM if enabled
-        if settings.ENABLE_LLM and settings.GEMINI_API_KEY:
+        context = self._build_rule_engine_context(student) if settings.ENABLE_LLM and settings.GEMINI_API_KEY else {"careers": [], "opportunities": []}
+        if context["careers"] or context["opportunities"]:
             prompt = (
-                f"You are UdaanPath's senior career counselor for Indian youth. Provide empathetic, highly actionable guidance.\n"
-                f"Student Profile:\n"
-                f"- Name: {student.full_name}\n"
-                f"- Education: {student.education_level}, Stream: {student.stream}, Marks: {student.percentage_marks}%\n"
-                f"- Location: {student.district}, {student.state} (Tier: {student.location_tier})\n"
-                f"- Annual Family Income: INR {student.annual_family_income}, Financial Constraint: {student.financial_constraint}\n"
-                f"- Skills: {', '.join(student.skills or [])}\n"
-                f"- Interests: {', '.join(student.interests or [])}\n"
-                f"- Focus Area: {req.focus_area or 'General career progression'}\n\n"
-                f"Provide: (1) Warm encouraging 3-paragraph counselor narrative, (2) 4 bullet key takeaways, (3) 3 specific immediate action steps. "
-                f"Do NOT invent unverified schemes. Ground advice in Indian realities."
+                "Explain only the results below, which were computed by UdaanPath's rule engines from verified knowledge-base records. "
+                "Do not add eligibility, deadline, salary, benefit, or certification claims. Say unknown when a result does not include a fact. "
+                "Do not ask for or infer personal information.\n"
+                "Computed results:\n" + json.dumps(context, ensure_ascii=True)
             )
             ai_text = self._call_gemini_api(prompt)
             if ai_text:
                 return AINarrativeAdviceResponse(
                     student_id=student.id,
                     narrative_advice=ai_text,
-                    key_takeaways=[
-                        "Actionable insights tailored to your specific academic stream.",
-                        "Direct focus on financial feasibility and rapid employability.",
-                        "Structured milestones matching your location and background."
-                    ],
+                    key_takeaways=[],
                     is_ai_generated=True,
                     provider="gemini",
-                    suggested_action_items=[
-                        "Check your UdaanPath dashboard for matching scholarships.",
-                        "Commence the foundational stage of your learning pathway.",
-                        "Upload and verify your core documents."
-                    ]
+                    suggested_action_items=[],
                 )
 
         # Fallback to rule engine
@@ -176,14 +185,11 @@ class AIAdvisorService:
             )
 
         tips = [
-            f"Stage 1 (Foundational): Dedicate {pathway.weekly_study_hours} hours weekly to master core vocabulary and diagnostic tools.",
-            "Stage 2 (Intermediate): Build 2 mini-projects to reinforce applied concepts without spending on costly bootcamps.",
-            "Stage 3 (Advanced): Use free SWAYAM/NPTEL question banks to prepare for recognized trade/industry assessments.",
-            "Stage 4 (Job-Ready): Register on National Career Service (ncs.gov.in) and NAPS apprenticeship portals."
+            "Suggestion only for {}: use the listed resource as a starting point; course requirements and costs are unknown.".format(milestone.stage)
+            for milestone in pathway.milestones
         ]
-        strategy = (
-            f"Paced study schedule of {pathway.weekly_study_hours} hrs/week over {pathway.total_estimated_duration_months} months. "
-            f"Utilizes 100% free curriculum alternatives to eliminate financial barriers."
+        strategy = "Suggested pace: {} hours per week over about {} months. This is a planning estimate; course costs and requirements are unknown.".format(
+            pathway.weekly_study_hours, pathway.total_estimated_duration_months,
         )
 
         return AIRoadmapEnrichmentResponse(
