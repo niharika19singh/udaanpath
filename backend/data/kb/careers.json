@@ -1,0 +1,302 @@
+[
+  {
+    "slug": "solar-pv-installation-technician",
+    "title": "Solar PV Installation & Maintenance Technician",
+    "category": "vocational_skilled_trades",
+    "sector": "Renewable Energy & Green Power",
+    "description": "Install, test, configure, and maintain residential and commercial rooftop solar photovoltaic systems under government clean energy missions.",
+    "entry_qualification": "10th_pass",
+    "eligible_streams": [
+      "vocational",
+      "science_pcm",
+      "general"
+    ],
+    "key_skills": [
+      "Electrical Wiring",
+      "PV System Sizing",
+      "Safety Standards",
+      "Inverter Maintenance"
+    ],
+    "typical_interests": [
+      "Solar Energy",
+      "Electronics",
+      "Green Tech",
+      "Hands-on Work"
+    ],
+    "training_duration_months": 4,
+    "financial_barrier": "low",
+    "salary_starting_inr": 240000,
+    "salary_mid_inr": 550000,
+    "salary_source_url": null,
+    "growth_outlook": "Very High (Backed by PM Surya Ghar Muft Bijli Yojana)",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Legacy record: salary and growth claims have no source yet."
+  },
+  {
+    "slug": "junior-data-analyst",
+    "title": "Junior Data Analyst & Business Intelligence Associate",
+    "category": "corporate_tech",
+    "sector": "Information Technology & Analytics",
+    "description": "Transform operational raw data into visual dashboards, SQL queries, and actionable business insights for enterprise and SME growth.",
+    "entry_qualification": "12th_pass",
+    "eligible_streams": [
+      "science_pcm",
+      "commerce",
+      "arts_humanities"
+    ],
+    "key_skills": [
+      "SQL",
+      "Excel",
+      "Data Visualization",
+      "Basic Python",
+      "Problem Solving"
+    ],
+    "typical_interests": [
+      "Data Analysis",
+      "Technology",
+      "Mathematics",
+      "Business Strategy"
+    ],
+    "training_duration_months": 6,
+    "financial_barrier": "low",
+    "salary_starting_inr": 360000,
+    "salary_mid_inr": 900000,
+    "salary_source_url": null,
+    "growth_outlook": "High",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Legacy record: salary and growth claims have no source yet."
+  },
+  {
+    "slug": "medical-laboratory-technician",
+    "title": "Medical Laboratory Technician (DMLT)",
+    "category": "vocational_skilled_trades",
+    "sector": "Healthcare & Diagnostics",
+    "description": "Perform diagnostic testing on patient samples, manage automated laboratory equipment, and report pathological indicators.",
+    "entry_qualification": "12th_pass",
+    "eligible_streams": [
+      "science_pcb"
+    ],
+    "key_skills": [
+      "Phlebotomy",
+      "Diagnostic Equipment",
+      "Biochemistry",
+      "Pathology Reporting"
+    ],
+    "typical_interests": [
+      "Healthcare",
+      "Biology",
+      "Community Health",
+      "Laboratory Science"
+    ],
+    "training_duration_months": 12,
+    "financial_barrier": "moderate",
+    "salary_starting_inr": 280000,
+    "salary_mid_inr": 600000,
+    "salary_source_url": null,
+    "growth_outlook": "High (Expanding hospital & diagnostic networks across Tier-2/3)",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Legacy record: salary and growth claims have no source yet."
+  },
+  {
+    "slug": "banking-financial-services-assistant",
+    "title": "Banking & Financial Services Assistant (BFSI)",
+    "category": "corporate_tech",
+    "sector": "Banking & Financial Services",
+    "description": "Process customer transactions, microfinance credit evaluation, loan documentation, and digital KYC verification.",
+    "entry_qualification": "12th_pass",
+    "eligible_streams": [
+      "commerce",
+      "arts_humanities",
+      "general"
+    ],
+    "key_skills": [
+      "Financial Literacy",
+      "Accounting Basics",
+      "Customer Communication",
+      "KYC Compliance"
+    ],
+    "typical_interests": [
+      "Banking",
+      "Finance",
+      "Economics",
+      "Customer Service"
+    ],
+    "training_duration_months": 3,
+    "financial_barrier": "low",
+    "salary_starting_inr": 260000,
+    "salary_mid_inr": 650000,
+    "salary_source_url": null,
+    "growth_outlook": "High (Rapid financial inclusion and fintech adoption)",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Legacy record: salary and growth claims have no source yet."
+  },
+  {
+    "slug": "ssc-junior-secretariat-assistant",
+    "title": "Staff Selection Commission (SSC) Junior Secretariat Assistant / LDC",
+    "category": "government_public_sector",
+    "sector": "Public Administration & Central Government",
+    "description": "Administrative support, file maintenance, data processing, and document handling across Central Ministries and Departments.",
+    "entry_qualification": "12th_pass",
+    "eligible_streams": [
+      "arts_humanities",
+      "commerce",
+      "science_pcm",
+      "science_pcb",
+      "general"
+    ],
+    "key_skills": [
+      "Typing Speed (Hindi/English)",
+      "General Awareness",
+      "Numerical Aptitude",
+      "Drafting"
+    ],
+    "typical_interests": [
+      "Public Service",
+      "Governance",
+      "National Administration",
+      "Job Stability"
+    ],
+    "training_duration_months": 8,
+    "financial_barrier": "low",
+    "salary_starting_inr": 320000,
+    "salary_mid_inr": 720000,
+    "salary_source_url": null,
+    "growth_outlook": "Stable (Assured 7th Pay Commission pay scale & pension benefits)",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Legacy record: salary and growth claims have no source yet."
+  },
+  {
+    "slug": "cnc-machine-operator",
+    "title": "CNC Machine Operator & Precision Machinist",
+    "category": "vocational_skilled_trades",
+    "sector": "Advanced Manufacturing & Automotive",
+    "description": "Program, operate, and calibrate Computer Numerical Control (CNC) milling and lathe machines to fabricate precision mechanical components.",
+    "entry_qualification": "10th_pass",
+    "eligible_streams": [
+      "vocational",
+      "science_pcm",
+      "general"
+    ],
+    "key_skills": [
+      "Blueprint Reading",
+      "G-Code/M-Code",
+      "Quality Inspection",
+      "Micrometer & Vernier"
+    ],
+    "typical_interests": [
+      "Manufacturing",
+      "Automobiles",
+      "Mechanical Engineering",
+      "Industrial Tools"
+    ],
+    "training_duration_months": 6,
+    "financial_barrier": "low",
+    "salary_starting_inr": 250000,
+    "salary_mid_inr": 580000,
+    "salary_source_url": null,
+    "growth_outlook": "High (Make in India and PLI manufacturing push)",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Legacy record: salary and growth claims have no source yet."
+  },
+  {
+    "slug": "ui-ux-digital-product-designer",
+    "title": "UI/UX & Digital Product Designer",
+    "category": "creative_emerging",
+    "sector": "Design & Digital Media",
+    "description": "Craft intuitive user journeys, wireframes, mockups, and mobile application interfaces for digital startups and vernacular platforms.",
+    "entry_qualification": "12th_pass",
+    "eligible_streams": [
+      "arts_humanities",
+      "commerce",
+      "science_pcm",
+      "general"
+    ],
+    "key_skills": [
+      "Figma",
+      "User Research",
+      "Wireframing",
+      "Typography",
+      "Visual Design"
+    ],
+    "typical_interests": [
+      "Graphic Design",
+      "Creativity",
+      "Psychology",
+      "Technology"
+    ],
+    "training_duration_months": 6,
+    "financial_barrier": "low",
+    "salary_starting_inr": 380000,
+    "salary_mid_inr": 1100000,
+    "salary_source_url": null,
+    "growth_outlook": "Very High",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Legacy record: salary and growth claims have no source yet."
+  },
+  {
+    "slug": "smart-agriculture-drone-technician",
+    "title": "Smart Agriculture & Drone Technician",
+    "category": "creative_emerging",
+    "sector": "Agritech & Rural Innovation",
+    "description": "Operate and pilot agricultural drones for pesticide spraying, soil nutrient surveying, and crop health analytics under Kisan Drone schemes.",
+    "entry_qualification": "10th_pass",
+    "eligible_streams": [
+      "science_pcm",
+      "science_pcb",
+      "vocational",
+      "general"
+    ],
+    "key_skills": [
+      "DGCA Drone Pilot Certification",
+      "GIS Mapping",
+      "Pesticide Formulation",
+      "Flight Safety"
+    ],
+    "typical_interests": [
+      "Agriculture",
+      "Drones",
+      "Robotics",
+      "Rural Economy"
+    ],
+    "training_duration_months": 3,
+    "financial_barrier": "low",
+    "salary_starting_inr": 300000,
+    "salary_mid_inr": 700000,
+    "salary_source_url": null,
+    "growth_outlook": "Explosive (Government subsidizing Kisan Drones across panchayats)",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Legacy record: salary and growth claims have no source yet."
+  }
+]

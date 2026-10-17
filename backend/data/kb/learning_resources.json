@@ -1,0 +1,50 @@
+[
+  {
+    "slug": "swayam-portal",
+    "title": "SWAYAM - free online courses",
+    "provider": "Ministry of Education, Govt of India",
+    "url": "https://swayam.gov.in",
+    "level": "school to postgraduate",
+    "subject": "multiple",
+    "language": ["English"],
+    "cost": "free",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Check: free access terms, language coverage, whether certificates cost money."
+  },
+  {
+    "slug": "diksha-portal",
+    "title": "DIKSHA - school learning content",
+    "provider": "Ministry of Education, Govt of India",
+    "url": "https://diksha.gov.in",
+    "level": "Std 1-12",
+    "subject": "school curriculum",
+    "language": ["English", "Hindi"],
+    "cost": "free",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Check: which languages are actually available."
+  },
+  {
+    "slug": "skill-india-digital",
+    "title": "Skill India Digital Hub",
+    "provider": "MSDE / NSDC",
+    "url": "https://www.skillindiadigital.gov.in",
+    "level": "vocational",
+    "subject": "skills and vocational courses",
+    "language": ["English", "Hindi"],
+    "cost": "freemium",
+    "status": "needs_review",
+    "is_sample": false,
+    "source_url": null,
+    "last_verified_on": null,
+    "verified_by": null,
+    "notes": "Check: which courses are free and which charge fees."
+  }
+]
