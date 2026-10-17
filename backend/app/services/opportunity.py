@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from app.models.opportunity import Opportunity
 from app.repositories.opportunity import OpportunityRepository
 from app.repositories.profile import ProfileRepository
+from app.services.eligibility import EligibilityEngine
 from app.schemas.opportunity import (
     OpportunityMatchRequest,
     OpportunityMatchResponse,
@@ -44,60 +45,25 @@ class OpportunityService:
                 detail=f"Student profile with id {req.student_id} not found."
             )
 
-        all_opps = self.opp_repo.get_all(limit=req.limit, type=req.type)
+        all_opps = self.opp_repo.get_all(limit=max(self.opp_repo.count(), 1), type=req.type)
         matched_items: List[OpportunityMatchItem] = []
+        eligibility_engine = EligibilityEngine(self.db)
 
         for opp in all_opps:
-            # Basic quick evaluation for matching score
-            score = 100.0
-            reasons = []
-
-            # Income Check
-            if opp.income_ceiling is not None:
-                if student.annual_family_income <= opp.income_ceiling:
-                    reasons.append(f"Income within ceiling (₹{opp.income_ceiling:,.0f})")
-                else:
-                    score -= 40.0
-                    reasons.append(f"Income exceeds ceiling of ₹{opp.income_ceiling:,.0f}")
-
-            # Gender Check
-            allowed_g = [g.lower() for g in opp.allowed_genders]
-            if "all" not in allowed_g and student.gender.lower() not in allowed_g:
-                score -= 50.0
-                reasons.append(f"Scheme restricted to {', '.join(opp.allowed_genders)}")
-
-            # Category Check
-            allowed_c = [c.upper() for c in opp.allowed_categories]
-            if "ALL" not in allowed_c and student.category.upper() not in allowed_c:
-                score -= 30.0
-                reasons.append(f"Scheme targeted for {', '.join(opp.allowed_categories)}")
-
-            # Academic Marks Check
-            if opp.min_marks_percentage is not None:
-                if student.percentage_marks >= opp.min_marks_percentage:
-                    reasons.append(f"Marks ({student.percentage_marks}%) meet minimum ({opp.min_marks_percentage}%)")
-                else:
-                    score -= 25.0
-                    reasons.append(f"Marks below minimum {opp.min_marks_percentage}%")
-
-            # Final status
-            if score >= 90.0:
-                status_str = "ELIGIBLE"
-            elif score >= 50.0:
-                status_str = "PARTIALLY_ELIGIBLE"
-            else:
-                status_str = "INELIGIBLE"
+            result = eligibility_engine.evaluate(student, opp)
+            criteria = result.passed_criteria + result.failed_criteria + result.unknown_criteria
+            reasons = [f"{item.criterion_name}: {item.explanation}" for item in criteria]
 
             item = OpportunityMatchItem(
                 opportunity=OpportunityResponse.model_validate(opp),
-                match_score=max(10.0, score),
-                eligibility_status=status_str,
+                match_score=result.match_score,
+                eligibility_status=result.status,
                 reasons=reasons
             )
             matched_items.append(item)
 
-        # Sort by match score descending
-        matched_items.sort(key=lambda x: x.match_score, reverse=True)
+        matched_items.sort(key=lambda item: (-item.match_score, item.opportunity.title.lower()))
+        matched_items = matched_items[:req.limit]
 
         return OpportunityMatchResponse(
             student_id=req.student_id,
