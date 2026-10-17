@@ -44,25 +44,9 @@
   color: var(--cd-ink);
 }
 
-/* The shared top bar runs ~10px wide around 1280px viewports; tighten its
-   spacing on this page only so it never causes horizontal scrolling. */
+/* Tighter bar spacing for this tone; the shared shrink fix lives in App.css. */
 .portal--dark .topbar {
   gap: 18px;
-}
-
-.portal--dark .top-nav {
-  gap: clamp(14px, 1.6vw, 34px);
-}
-
-.portal--dark .top-tools {
-  min-width: 0;
-}
-
-.portal--dark .top-search {
-  flex: 0 1 300px;
-  width: auto;
-  min-width: 0;
-  overflow: hidden;
 }
 
 .portal--dark .top-nav a {

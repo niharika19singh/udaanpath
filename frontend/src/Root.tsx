@@ -16,9 +16,9 @@ function Root() {
     document.body.classList.toggle('is-landing', route === routes.home)
   }, [route])
 
-  // Profile and Career Discovery are views of one portal, so student state
-  // and API data survive moving between them.
-  if (route === routes.onboarding || route === routes.careers) {
+  // Every portal view (profile, careers, roadmap, opportunities, advisor) is
+  // one App instance, so student state and API data survive moving between them.
+  if (route !== routes.home) {
     return <App route={route} />
   }
   return <Landing />

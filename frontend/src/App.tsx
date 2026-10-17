@@ -153,10 +153,13 @@ const sideNavItems: { id: NavId; label: string; icon: LucideIcon }[] = [
   { id: 'advisor', label: 'AI Advisor', icon: Brain },
 ]
 
-/** Views that have their own URL; the others live inside the portal. */
-const routedViews: Partial<Record<NavId, Route>> = {
+/** Each portal view has its own URL so Back/Forward moves between them. */
+const routedViews: Record<NavId, Route> = {
   profile: routes.onboarding,
   careers: routes.careers,
+  pathways: routes.roadmap,
+  opportunities: routes.opportunities,
+  advisor: routes.advisor,
 }
 
 const topNav = [
@@ -352,9 +355,6 @@ function App({ route }: { route: Route }) {
   const [form, setForm] = useState<FormData>(draft?.form ?? initialForm)
   const [errors, setErrors] = useState<Errors>({})
   const [demoFilled, setDemoFilled] = useState(false)
-  // Views without a URL (roadmap, opportunities, advisor) are remembered with
-  // the route they were opened from, so Back/Forward still lands correctly.
-  const [panel, setPanel] = useState<{ id: NavId; route: Route } | null>(null)
 
   // Backend-connected state (from origin/main)
   const [student, setStudent] = useState<StudentProfileData | null>(null)
@@ -376,20 +376,13 @@ function App({ route }: { route: Route }) {
   // Field to focus once the errors have rendered (set when validation fails).
   const pendingFocus = useRef<keyof FormData | null>(null)
 
-  const routeView: NavId = route === routes.careers ? 'careers' : 'profile'
-  const activeNav: NavId = panel && panel.route === route ? panel.id : routeView
+  const activeNav: NavId =
+    (Object.keys(routedViews) as NavId[]).find(
+      (id) => routedViews[id] === route,
+    ) ?? 'profile'
   const shownView = useRef(`${step}-${activeNav}`)
 
-  const selectNav = (id: NavId) => {
-    const target = routedViews[id]
-    if (target) {
-      setPanel(null)
-      navigate(target)
-    } else {
-      setPanel({ id, route })
-      window.scrollTo({ top: 0 })
-    }
-  }
+  const selectNav = (id: NavId) => navigate(routedViews[id])
 
   // Loads a student's recommendations, opportunities and first roadmap.
   const loadStudentData = async (id: number) => {

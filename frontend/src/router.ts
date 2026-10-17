@@ -5,6 +5,9 @@ export const routes = {
   home: '/',
   onboarding: '/onboarding',
   careers: '/careers',
+  roadmap: '/roadmap',
+  opportunities: '/opportunities',
+  advisor: '/advisor',
 } as const
 
 export type Route = (typeof routes)[keyof typeof routes]

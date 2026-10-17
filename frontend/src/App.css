@@ -278,6 +278,24 @@ ol {
   color: var(--muted);
 }
 
+/* The fixed-width search box pushed the bar past the viewport around
+   1280–1366px. Let it shrink instead. Scoped to .portal so it keeps
+   precedence over the responsive overrides below. */
+.portal .top-tools {
+  min-width: 0;
+}
+
+.portal .top-search {
+  flex: 0 1 300px;
+  width: auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.portal .top-nav {
+  gap: clamp(14px, 1.6vw, 34px);
+}
+
 .top-search input {
   flex: 1;
   min-width: 0;

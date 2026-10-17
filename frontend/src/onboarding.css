@@ -20,25 +20,6 @@
     linear-gradient(180deg, var(--ivory), var(--ivory-deep));
 }
 
-/* ---------- Shared top bar on the profile pages ---------- */
-
-/* The fixed-width search box pushed the bar past the viewport around
-   1280–1366px. Let it shrink (same fix as Career Discovery's dark tone). */
-.portal:not(.portal--dark) .top-tools {
-  min-width: 0;
-}
-
-.portal:not(.portal--dark) .top-search {
-  flex: 0 1 300px;
-  width: auto;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.portal:not(.portal--dark) .top-nav {
-  gap: clamp(14px, 1.6vw, 34px);
-}
-
 /* ---------- Hero ---------- */
 
 .profile-page .eyebrow {
