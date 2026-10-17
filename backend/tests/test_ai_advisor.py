@@ -18,6 +18,8 @@ def test_ai_narrative_advice_fallback(client: TestClient, monkeypatch):
         "education_level": "12th_pass",
         "stream": "science_pcm",
         "percentage_marks": 69.0,
+        "skills": ["Private Skill Detail"],
+        "interests": ["Private Interest Detail"],
         "skills": ["Electrical Circuits", "Basic Tools"],
         "interests": ["Renewable Energy"]
     }
@@ -82,7 +84,7 @@ def test_llm_prompt_contains_only_computed_results(client: TestClient, monkeypat
     assert data["suggested_action_items"] == []
     assert "Example career" in captured["prompt"]
     assert "Example opportunity" in captured["prompt"]
-    for private_value in ("Private Student Name", "private.student@example.com", "+919999999999", "110000", "My private question"):
+    for private_value in ("Private Student Name", "private.student@example.com", "+919999999999", "110000", "Private Skill Detail", "Private Interest Detail", "My private question"):
         assert private_value not in captured["prompt"]
 
 

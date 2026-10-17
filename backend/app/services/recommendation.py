@@ -74,7 +74,7 @@ class RecommendationService:
         if student.financial_constraint in ["high", "extreme"] or student.annual_family_income <= 180000:
             if career.financial_barrier == "low":
                 score += 15.0
-                reasons.append("Low training cost barrier with quick pathway to earning")
+                reasons.append("The catalog labels the financial barrier as low; confirm actual costs with a provider")
             elif career.financial_barrier == "moderate":
                 score += 9.0
             else:

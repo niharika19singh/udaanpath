@@ -72,6 +72,8 @@ def test_match_opportunities_for_student(client: TestClient, db_session: Session
     assert match_data["total_matches"] > 0
     assert all(m["eligibility_status"] == "NEEDS_CONFIRMATION" for m in match_data["opportunities"])
     assert all(m["match_score"] == 0.0 for m in match_data["opportunities"])
+    assert all(m["opportunity"]["verification_date"] == "unknown" for m in match_data["opportunities"])
+    assert all(m["opportunity"]["verified_by"] == "unknown" for m in match_data["opportunities"])
 
 
 def test_match_scores_all_before_sorting_and_limit(client: TestClient, db_session: Session, monkeypatch):

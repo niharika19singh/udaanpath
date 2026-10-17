@@ -62,7 +62,7 @@ class AIAdvisorService:
             for result in recommendations.recommendations:
                 career = self.career_repo.get_by_id(result.career_id)
                 if career and career.slug in verified_careers:
-                    career_results.append({"title": result.title, "score": result.match_score, "reason": result.rationale})
+                    career_results.append({"title": result.title, "score": result.match_score})
 
         if verified_opportunities:
             matches = OpportunityService(self.db).match_opportunities(
@@ -75,7 +75,6 @@ class AIAdvisorService:
                         "title": result.opportunity.title,
                         "status": result.eligibility_status,
                         "score": result.match_score,
-                        "reasons": result.reasons,
                         "source_url": str(verified_opportunities[slug]["source_url"]),
                     })
 

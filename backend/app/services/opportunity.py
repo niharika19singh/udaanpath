@@ -53,9 +53,15 @@ class OpportunityService:
             result = eligibility_engine.evaluate(student, opp)
             criteria = result.passed_criteria + result.failed_criteria + result.unknown_criteria
             reasons = [f"{item.criterion_name}: {item.explanation}" for item in criteria]
+            opportunity_response = OpportunityResponse.model_validate(opp)
+            if result.verification_date == "unknown":
+                opportunity_response = opportunity_response.model_copy(update={
+                    "verification_date": "unknown",
+                    "verified_by": "unknown",
+                })
 
             item = OpportunityMatchItem(
-                opportunity=OpportunityResponse.model_validate(opp),
+                opportunity=opportunity_response,
                 match_score=result.match_score,
                 eligibility_status=result.status,
                 reasons=reasons

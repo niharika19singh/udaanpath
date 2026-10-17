@@ -100,6 +100,8 @@ def test_learning_resource_accepts_unknown_cost():
         "cost": "unknown", "status": "needs_review",
     }
     assert LearningResource.model_validate(record).cost == "unknown"
+    record.pop("cost")
+    assert LearningResource.model_validate(record).cost == "unknown"
 
 
 def test_upgrade_never_marks_verified_and_dedupes(tmp_path, monkeypatch):
