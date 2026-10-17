@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MilestoneBase(BaseModel):
@@ -9,9 +9,11 @@ class MilestoneBase(BaseModel):
     title: str
     description: str
     duration_weeks: int
+    duration_is_suggestion: bool = True
     skills_to_acquire: List[str] = Field(default_factory=list)
     recommended_certification: Optional[str] = None
     estimated_cost_inr: float = 0.0
+    estimated_cost_is_unknown: bool = True
     free_alternative_resource: str
     resource_url: str
     status: str = Field(default="not_started", description="not_started, in_progress, completed")
@@ -21,8 +23,7 @@ class MilestoneResponse(MilestoneBase):
     id: int
     pathway_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PathwayGenerateRequest(BaseModel):
@@ -38,6 +39,7 @@ class PathwayResponse(BaseModel):
     career_title: str
     total_estimated_duration_months: int
     total_estimated_cost_inr: float
+    total_estimated_cost_is_unknown: bool = True
     free_alternative_available: bool
     weekly_study_hours: int
     is_active: bool
@@ -45,8 +47,7 @@ class PathwayResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MilestoneStatusUpdateRequest(BaseModel):

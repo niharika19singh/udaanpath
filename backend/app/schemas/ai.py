@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 class AINarrativeAdviceRequest(BaseModel):
     student_id: int
     focus_area: Optional[str] = Field(None, description="Optional focus area e.g. financial_support, skill_development, career_transition")
+    query: Optional[str] = Field(None, description="Optional student question or query")
 
 
 class AINarrativeAdviceResponse(BaseModel):

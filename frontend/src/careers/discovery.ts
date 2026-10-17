@@ -42,7 +42,7 @@ export type Career = {
   midSalary: number
   growth: string
   trainingMonths: number
-  costBarrier: 'low' | 'moderate'
+  costBarrier: 'low' | 'moderate' | 'high'
   icon: LucideIcon
   roadmap: 'solar' | 'data' | 'generic'
 }
@@ -529,3 +529,53 @@ export const roadmapFor = (c: Career): Stage[] => {
 
 export const formatLakh = (inr: number) =>
   `₹${(inr / 100000).toFixed(inr % 100000 === 0 ? 0 : 1)} L`
+
+/* --------------------------------------------------------------------------
+   Live catalogue — facts from GET /api/v1/careers/ override the bundled copy
+   above, matched by slug. Layout data (family, icon, short name, roadmap
+   template) stays local because the API has no notion of the map.
+   -------------------------------------------------------------------------- */
+
+export type ApiCareer = {
+  id: number
+  slug: string
+  title: string
+  sector: string
+  description: string
+  entry_qualification: string
+  eligible_streams: string[]
+  key_skills: string[]
+  typical_interests: string[]
+  starting_salary_inr: number
+  mid_level_salary_inr: number
+  growth_outlook: string
+  training_duration_months: number
+  financial_barrier: string
+}
+
+/** Readable label for any entry qualification the API may return. */
+export const labelQualification = (q: string) =>
+  qualificationLabels[q as Qualification] ?? q.replace(/_/g, ' ')
+
+export function applyCatalogue(rows: ApiCareer[]): Career[] {
+  const bySlug = new Map(rows.map((r) => [r.slug, r]))
+  return careers.map((c) => {
+    const r = bySlug.get(c.id)
+    if (!r) return c
+    return {
+      ...c,
+      title: r.title,
+      sector: r.sector,
+      description: r.description,
+      qualification: r.entry_qualification as Qualification,
+      streams: r.eligible_streams as Stream[],
+      skills: r.key_skills,
+      interests: r.typical_interests,
+      startingSalary: r.starting_salary_inr,
+      midSalary: r.mid_level_salary_inr,
+      growth: r.growth_outlook,
+      trainingMonths: r.training_duration_months,
+      costBarrier: r.financial_barrier as Career['costBarrier'],
+    }
+  })
+}

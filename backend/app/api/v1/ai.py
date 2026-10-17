@@ -13,6 +13,7 @@ router = APIRouter(prefix="/ai", tags=["AI Career Narrative & Guidance (Optional
 
 
 @router.post("/advice", response_model=AINarrativeAdviceResponse)
+@router.post("/advise", response_model=AINarrativeAdviceResponse)
 def get_career_advice(payload: AINarrativeAdviceRequest, db: Session = Depends(get_db)):
     """Generate personalized career counseling narrative. Uses Gemini if enabled, with rule-based fallback."""
     service = AIAdvisorService(db)

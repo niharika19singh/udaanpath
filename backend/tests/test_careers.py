@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from app.models.career import Career
 from app.models.profile import StudentProfile
+from app.services.recommendation import RecommendationService
 
 def seed_sample_careers(db_session: Session):
     data_path = Path(__file__).parent.parent / "data" / "careers.json"
@@ -70,3 +71,65 @@ def test_career_recommendation_engine(client: TestClient, db_session: Session):
     assert "Solar" in top_rec["title"] or top_rec["match_score"] >= 80.0
     assert len(top_rec["rationale"]) > 0
     assert top_rec["starting_salary_inr"] > 0
+    assert 3 <= len(rec_data["recommendations"]) <= 5
+    assert len({item["category"] for item in rec_data["recommendations"]}) >= 3
+    assert all(item["rationale"].strip() for item in rec_data["recommendations"])
+    assert any(item["alternative_pathways"] for item in rec_data["recommendations"])
+
+
+def test_recommendations_exclude_stream_and_qualification_mismatches(client: TestClient, db_session: Session):
+    seed_sample_careers(db_session)
+    student_payload = {
+        "full_name": "Commerce Student",
+        "email": "commerce.recommendations@example.com",
+        "age": 16,
+        "gender": "female",
+        "category": "General",
+        "state": "Uttar Pradesh",
+        "district": "Varanasi",
+        "annual_family_income": 180000.0,
+        "education_level": "10th_pass",
+        "stream": "commerce",
+        "percentage_marks": 80.0,
+    }
+    student_id = client.post("/api/v1/profiles/", json=student_payload).json()["id"]
+
+    response = client.post("/api/v1/careers/recommend", json={"student_id": student_id, "limit": 20})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["recommendations"] == []
+    assert data["total_recommendations"] == 0
+
+
+def test_recommendations_do_not_raise_low_scores_to_45(client: TestClient, db_session: Session):
+    seed_sample_careers(db_session)
+    student_payload = {
+        "full_name": "Low Alignment Student",
+        "email": "low.score.recommendations@example.com",
+        "age": 18,
+        "gender": "female",
+        "category": "General",
+        "state": "Uttar Pradesh",
+        "district": "Varanasi",
+        "annual_family_income": 100000.0,
+        "financial_constraint": "high",
+        "education_level": "12th_pass",
+        "stream": "science_pcm",
+        "percentage_marks": 70.0,
+        "skills": [],
+        "interests": [],
+        "career_aspirations": [],
+    }
+    student_id = client.post("/api/v1/profiles/", json=student_payload).json()["id"]
+    career = db_session.query(Career).filter(Career.slug == "solar-pv-installation-technician").first()
+    career.financial_barrier = "high"
+    career.key_skills = []
+    career.typical_interests = []
+    db_session.flush()
+
+    student = db_session.query(StudentProfile).filter(StudentProfile.id == student_id).first()
+    score, rationale = RecommendationService(db_session)._score_career_for_student(student, career)
+
+    assert score == 39.0
+    assert rationale.strip()

@@ -1,4 +1,6 @@
 import {
+  createContext,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -20,15 +22,16 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
-import { PortalShell } from '../App.tsx'
+import { api, type CareerItem } from '../api/client'
 import { linkTo, routes } from '../router.ts'
 import {
+  applyCatalogue,
   careers,
   emptyFilters,
   families,
   formatLakh,
+  labelQualification,
   passesFilters,
-  qualificationLabels,
   roadmapFor,
   sectors,
   streamLabels,
@@ -120,35 +123,110 @@ const readSaved = (): string[] => {
 const tabs = ['Overview', 'Skills', 'Pathway', 'Opportunities'] as const
 type Tab = (typeof tabs)[number]
 
+/** The career list the view renders: live API facts when available. */
+const CatalogueContext = createContext<Career[]>(careers)
+const useCatalogue = () => useContext(CatalogueContext)
+
+/** Backend recommender output for the submitted profile, keyed by slug. */
+type Recommendation = { careerId: number; score: number; rationale: string }
+const RecommendationContext = createContext<Record<string, Recommendation>>({})
+
+type CatalogueState = {
+  list: Career[]
+  /** slug → numeric career id in the backend database */
+  ids: Record<string, number>
+  source: 'loading' | 'live' | 'offline'
+}
+
+export type CareerDiscoveryProps = {
+  /** Recommendations returned for the submitted profile, if any. */
+  recommendations?: CareerItem[]
+  /** True once a profile has been submitted to the backend. */
+  hasProfile?: boolean
+  /** Opens the generated learning roadmap for a backend career id. */
+  onOpenRoadmap?: (careerId: number) => void
+}
+
 /* ========================================================================== */
 
-function CareerDiscovery() {
+function CareerDiscovery({
+  recommendations = [],
+  hasProfile = false,
+  onOpenRoadmap,
+}: CareerDiscoveryProps) {
+  const [catalogue, setCatalogue] = useState<CatalogueState>({
+    list: careers,
+    ids: {},
+    source: 'loading',
+  })
   const [selectedId, setSelectedId] = useState(careers[0].id)
   const [picked, setPicked] = useState<string[]>([])
   const [filters, setFilters] = useState<Filters>(emptyFilters)
   const [tab, setTab] = useState<Tab>('Overview')
   const [saved, setSaved] = useState<string[]>(readSaved)
 
-  const selected = careers.find((c) => c.id === selectedId) ?? careers[0]
+  // Facts come from GET /api/v1/careers/; the bundled copy is only an
+  // offline fallback, and the page says which one is showing.
+  useEffect(() => {
+    let alive = true
+    api
+      .listCareers()
+      .then((rows) => {
+        if (!alive) return
+        setCatalogue({
+          list: applyCatalogue(rows),
+          ids: Object.fromEntries(rows.map((r) => [r.slug, r.id])),
+          source: 'live',
+        })
+      })
+      .catch(() => {
+        if (alive) setCatalogue((c) => ({ ...c, source: 'offline' }))
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const list = catalogue.list
+
+  const recBySlug = useMemo(() => {
+    const slugById = Object.fromEntries(
+      Object.entries(catalogue.ids).map(([slug, id]) => [id, slug]),
+    )
+    const out: Record<string, Recommendation> = {}
+    recommendations.forEach((r) => {
+      const slug = slugById[r.career_id]
+      if (slug) {
+        out[slug] = {
+          careerId: r.career_id,
+          score: r.match_score,
+          rationale: r.rationale,
+        }
+      }
+    })
+    return out
+  }, [recommendations, catalogue.ids])
+
+  const selected = list.find((c) => c.id === selectedId) ?? list[0]
 
   // How many of the student's picked interests each career sits under.
   const overlap = useMemo(() => {
     const out: Record<string, number> = {}
-    careers.forEach((c) => {
+    list.forEach((c) => {
       out[c.id] = topics.filter(
         (t) => picked.includes(t.id) && t.careers.includes(c.id),
       ).length
     })
     return out
-  }, [picked])
+  }, [picked, list])
 
   const visible = useMemo(() => {
     const out: Record<string, boolean> = {}
-    careers.forEach((c) => (out[c.id] = passesFilters(c, filters)))
+    list.forEach((c) => (out[c.id] = passesFilters(c, filters)))
     return out
-  }, [filters])
+  }, [filters, list])
 
-  const visibleCount = careers.filter((c) => visible[c.id]).length
+  const visibleCount = list.filter((c) => visible[c.id]).length
   const filtersActive = Object.values(filters).some(Boolean)
 
   useEffect(() => {
@@ -176,168 +254,184 @@ function CareerDiscovery() {
 
   const pickedLabels = topics.filter((t) => picked.includes(t.id))
 
+  const selectedRec = recBySlug[selected.id]
+  const selectedDbId = catalogue.ids[selected.id]
+
   return (
-    <PortalShell initial="" active="Career Discovery" tone="dark">
-      <main className="cd">
-        <section className="cd-explore" aria-labelledby="cd-title">
-          <header className="cd-head">
-            <p className="cd-eyebrow">
-              <Compass size={16} aria-hidden="true" />
-              Career discovery
+    <CatalogueContext.Provider value={list}>
+      <RecommendationContext.Provider value={recBySlug}>
+        <div className="cd">
+          <section className="cd-explore" aria-labelledby="cd-title">
+            <header className="cd-head">
+              <p className="cd-eyebrow">
+                <Compass size={16} aria-hidden="true" />
+                Career discovery
+              </p>
+              <h1 id="cd-title">
+                Find your next <em>possibility</em>
+              </h1>
+              <p className="cd-lede">
+                Explore {list.length} real careers across three families. Pick
+                interests and filters to see which paths fit, then compare the
+                skills, training and pay for each.
+              </p>
+              <Constellation />
+            </header>
+
+            <PathwayMap
+              selected={selected}
+              overlap={overlap}
+              visible={visible}
+              pickedLabels={pickedLabels.map((t) => t.label)}
+              onSelect={select}
+            />
+
+            <FamilyList
+              selected={selected}
+              overlap={overlap}
+              visible={visible}
+              onSelect={select}
+            />
+
+            <p className="cd-count" aria-live="polite">
+              {filtersActive
+                ? `${visibleCount} of ${list.length} careers fit your filters.`
+                : `${list.length} careers across ${families.length} career families.`}
             </p>
-            <h1 id="cd-title">
-              Find your next <em>possibility</em>
-            </h1>
-            <p className="cd-lede">
-              Explore eight real careers across three families. Pick interests
-              and filters to see which paths fit, then compare the skills,
-              training and pay for each.
-            </p>
-            <Constellation />
-          </header>
-
-          <PathwayMap
-            selected={selected}
-            overlap={overlap}
-            visible={visible}
-            pickedLabels={pickedLabels.map((t) => t.label)}
-            onSelect={select}
-          />
-
-          <FamilyList
-            selected={selected}
-            overlap={overlap}
-            visible={visible}
-            onSelect={select}
-          />
-
-          <p className="cd-count" aria-live="polite">
-            {filtersActive
-              ? `${visibleCount} of ${careers.length} careers fit your filters.`
-              : `${careers.length} careers across ${families.length} career families.`}
-          </p>
-          {/* When the details panel sits below the map, the user chooses
+            {/* When the details panel sits below the map, the user chooses
               whether to jump to it; selecting never scrolls the page. */}
-          <a className="cd-jump" href="#cd-details-panel">
-            View {selected.name} details
-            <ArrowRight size={15} aria-hidden="true" />
-          </a>
-        </section>
+            <a className="cd-jump" href="#cd-details-panel">
+              View {selected.name} details
+              <ArrowRight size={15} aria-hidden="true" />
+            </a>
+          </section>
 
-        <Details
-          career={selected}
-          tab={tab}
-          onTab={setTab}
-          saved={saved.includes(selected.id)}
-          onToggleSave={() =>
-            setSaved((cur) =>
-              cur.includes(selected.id)
-                ? cur.filter((x) => x !== selected.id)
-                : [...cur, selected.id],
-            )
-          }
-          visible={visible[selected.id]}
-        />
+          <Details
+            career={selected}
+            tab={tab}
+            onTab={setTab}
+            saved={saved.includes(selected.id)}
+            onToggleSave={() =>
+              setSaved((cur) =>
+                cur.includes(selected.id)
+                  ? cur.filter((x) => x !== selected.id)
+                  : [...cur, selected.id],
+              )
+            }
+            visible={visible[selected.id]}
+            rec={selectedRec}
+            source={catalogue.source}
+            hasProfile={hasProfile}
+            onOpenRoadmap={
+              onOpenRoadmap && selectedDbId !== undefined
+                ? () => onOpenRoadmap(selectedDbId)
+                : undefined
+            }
+          />
 
-        <Suggestions
-          picked={picked}
-          overlap={overlap}
-          visible={visible}
-          selectedId={selected.id}
-          onSelect={select}
-        />
+          <Suggestions
+            picked={picked}
+            overlap={overlap}
+            visible={visible}
+            selectedId={selected.id}
+            onSelect={select}
+          />
 
-        <section
-          className="cd-panel cd-interests"
-          aria-labelledby="cd-interests-title"
-        >
-          <div className="cd-panel-head">
-            <Compass size={22} className="cd-panel-icon" aria-hidden="true" />
-            <div>
-              <h2 id="cd-interests-title">Explore by interest</h2>
-              <p>Select topics that interest you.</p>
+          <section
+            className="cd-panel cd-interests"
+            aria-labelledby="cd-interests-title"
+          >
+            <div className="cd-panel-head">
+              <Compass size={22} className="cd-panel-icon" aria-hidden="true" />
+              <div>
+                <h2 id="cd-interests-title">Explore by interest</h2>
+                <p>Select topics that interest you.</p>
+              </div>
             </div>
-          </div>
-          <ul className="cd-chips" aria-label="Interests">
-            {topics.map((t) => (
-              <li key={t.id}>
-                <button
-                  type="button"
-                  className="cd-chip"
-                  aria-pressed={picked.includes(t.id)}
-                  onClick={() => togglePicked(t.id)}
-                >
-                  {t.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+            <ul className="cd-chips" aria-label="Interests">
+              {topics.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    className="cd-chip"
+                    aria-pressed={picked.includes(t.id)}
+                    onClick={() => togglePicked(t.id)}
+                  >
+                    {t.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
 
-        <section
-          className="cd-panel cd-filters"
-          aria-labelledby="cd-filters-title"
-        >
-          <div className="cd-panel-head">
-            <Filter size={22} className="cd-panel-icon" aria-hidden="true" />
-            <h2 id="cd-filters-title">Filters</h2>
-            <button
-              type="button"
-              className="cd-clear"
-              onClick={clearAll}
-              disabled={!filtersActive && picked.length === 0}
-            >
-              Clear all
-            </button>
-          </div>
-          <div className="cd-selects">
-            <Select
-              label="Your education"
-              icon={GraduationCap}
-              value={filters.education}
-              onChange={(v) =>
-                setFilters({ ...filters, education: v as Filters['education'] })
-              }
-              options={[
-                ['', 'Any level'],
-                ['10th_pass', '10th pass'],
-                ['12th_pass', '12th pass'],
-              ]}
-            />
-            <Select
-              label="Stream"
-              icon={Sparkles}
-              value={filters.stream}
-              onChange={(v) =>
-                setFilters({ ...filters, stream: v as Filters['stream'] })
-              }
-              options={[['', 'Any stream'], ...Object.entries(streamLabels)]}
-            />
-            <Select
-              label="Industry"
-              icon={TrendingUp}
-              value={filters.sector}
-              onChange={(v) => setFilters({ ...filters, sector: v })}
-              options={[['', 'Any industry'], ...sectors.map((s) => [s, s])]}
-            />
-            <Select
-              label="Training time"
-              icon={Clock}
-              value={filters.training}
-              onChange={(v) =>
-                setFilters({ ...filters, training: v as Filters['training'] })
-              }
-              options={[
-                ['', 'Any length'],
-                ['3', 'Up to 3 months'],
-                ['6', 'Up to 6 months'],
-                ['12', 'Up to 12 months'],
-              ]}
-            />
-          </div>
-        </section>
-      </main>
-    </PortalShell>
+          <section
+            className="cd-panel cd-filters"
+            aria-labelledby="cd-filters-title"
+          >
+            <div className="cd-panel-head">
+              <Filter size={22} className="cd-panel-icon" aria-hidden="true" />
+              <h2 id="cd-filters-title">Filters</h2>
+              <button
+                type="button"
+                className="cd-clear"
+                onClick={clearAll}
+                disabled={!filtersActive && picked.length === 0}
+              >
+                Clear all
+              </button>
+            </div>
+            <div className="cd-selects">
+              <Select
+                label="Your education"
+                icon={GraduationCap}
+                value={filters.education}
+                onChange={(v) =>
+                  setFilters({
+                    ...filters,
+                    education: v as Filters['education'],
+                  })
+                }
+                options={[
+                  ['', 'Any level'],
+                  ['10th_pass', '10th pass'],
+                  ['12th_pass', '12th pass'],
+                ]}
+              />
+              <Select
+                label="Stream"
+                icon={Sparkles}
+                value={filters.stream}
+                onChange={(v) =>
+                  setFilters({ ...filters, stream: v as Filters['stream'] })
+                }
+                options={[['', 'Any stream'], ...Object.entries(streamLabels)]}
+              />
+              <Select
+                label="Industry"
+                icon={TrendingUp}
+                value={filters.sector}
+                onChange={(v) => setFilters({ ...filters, sector: v })}
+                options={[['', 'Any industry'], ...sectors.map((s) => [s, s])]}
+              />
+              <Select
+                label="Training time"
+                icon={Clock}
+                value={filters.training}
+                onChange={(v) =>
+                  setFilters({ ...filters, training: v as Filters['training'] })
+                }
+                options={[
+                  ['', 'Any length'],
+                  ['3', 'Up to 3 months'],
+                  ['6', 'Up to 6 months'],
+                  ['12', 'Up to 12 months'],
+                ]}
+              />
+            </div>
+          </section>
+        </div>
+      </RecommendationContext.Provider>
+    </CatalogueContext.Provider>
   )
 }
 
@@ -358,6 +452,7 @@ function PathwayMap({
   pickedLabels,
   onSelect,
 }: MapProps) {
+  const list = useCatalogue()
   return (
     <div className="cd-map-frame">
       <div className="cd-map">
@@ -420,7 +515,7 @@ function PathwayMap({
               >
                 <path className="cd-line" d={rootPath(fy)} />
                 <path className="cd-line" d={trunkPath(fy)} />
-                {careers
+                {list
                   .filter((c) => c.family === f.id)
                   .map((c) => {
                     const state =
@@ -561,7 +656,7 @@ function PathwayMap({
         })}
 
         <ul className="cd-dest" aria-label="Careers">
-          {careers.map((c) => (
+          {list.map((c) => (
             <li
               key={c.id}
               style={{
@@ -594,6 +689,7 @@ function FamilyList({
   visible,
   onSelect,
 }: Omit<MapProps, 'pickedLabels'>) {
+  const list = useCatalogue()
   return (
     <div className="cd-families">
       {families.map((f) => (
@@ -614,7 +710,7 @@ function FamilyList({
             </span>
           </div>
           <ul className="cd-family-cards">
-            {careers
+            {list
               .filter((c) => c.family === f.id)
               .map((c) => (
                 <li key={c.id}>
@@ -650,6 +746,7 @@ function CareerCard({
   onSelect: (id: string) => void
 }) {
   const family = families.find((f) => f.id === career.family)!
+  const rec = useContext(RecommendationContext)[career.id]
   return (
     <button
       type="button"
@@ -668,13 +765,17 @@ function CareerCard({
         <span className="cd-card-meta">
           {!visible ? (
             <span className="cd-badge cd-badge--muted">Outside filters</span>
+          ) : rec ? (
+            <span className="cd-badge cd-badge--match">
+              {Math.round(rec.score)}/100 profile match
+            </span>
           ) : overlap > 0 ? (
             <span className="cd-badge cd-badge--match">
               Fits {overlap} of your picks
             </span>
           ) : (
             <span className="cd-badge">
-              {qualificationLabels[career.qualification]} · ~
+              {labelQualification(career.qualification)} · ~
               {career.trainingMonths} mo
             </span>
           )}
@@ -694,6 +795,10 @@ function Details({
   saved,
   onToggleSave,
   visible,
+  rec,
+  source,
+  hasProfile,
+  onOpenRoadmap,
 }: {
   career: Career
   tab: Tab
@@ -701,6 +806,10 @@ function Details({
   saved: boolean
   onToggleSave: () => void
   visible: boolean
+  rec?: Recommendation
+  source: CatalogueState['source']
+  hasProfile: boolean
+  onOpenRoadmap?: () => void
 }) {
   const family = families.find((f) => f.id === career.family)!
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -757,7 +866,7 @@ function Details({
           <p className="cd-details-badges">
             <span className="cd-badge cd-badge--accent">{family.name}</span>
             <span className="cd-badge">
-              From {qualificationLabels[career.qualification]}
+              From {labelQualification(career.qualification)}
             </span>
           </p>
         </div>
@@ -766,6 +875,19 @@ function Details({
         <p className="cd-details-note">
           This career is outside your current filters.
         </p>
+      )}
+
+      {rec && (
+        <section className="cd-rec" aria-label="Your profile match">
+          <p className="cd-rec-score">
+            <strong>{Math.round(rec.score)}</strong>
+            <span>/100 profile match</span>
+          </p>
+          <p className="cd-rec-why">{rec.rationale}</p>
+          <p className="cd-fine">
+            From UdaanPath&apos;s recommender, using the profile you submitted.
+          </p>
+        </section>
       )}
 
       {/* Catalogue figures stay visible across tabs, with their source. */}
@@ -809,13 +931,18 @@ function Details({
               <Wallet size={14} aria-hidden="true" />
               Cost to start
             </dt>
-            <dd>{career.costBarrier === 'low' ? 'Low' : 'Moderate'}</dd>
+            <dd>
+              {career.costBarrier.charAt(0).toUpperCase() +
+                career.costBarrier.slice(1)}
+            </dd>
           </div>
         </dl>
         <p className="cd-source">
-          Source: UdaanPath career catalogue. General estimates, not
-          personalised; actual pay and costs vary by employer, location and
-          institute.
+          {source === 'offline'
+            ? 'Showing the bundled copy of the UdaanPath career catalogue; the server could not be reached.'
+            : 'Source: UdaanPath career catalogue.'}{' '}
+          General estimates, not personalised; actual pay and costs vary by
+          employer, location and institute.
         </p>
       </section>
 
@@ -877,7 +1004,7 @@ function Details({
             <p className="cd-sub">Open to streams</p>
             <ul className="cd-tags cd-tags--soft">
               {career.streams.map((s) => (
-                <li key={s}>{streamLabels[s]}</li>
+                <li key={s}>{streamLabels[s] ?? s.replace(/_/g, ' ')}</li>
               ))}
             </ul>
           </>
@@ -902,8 +1029,9 @@ function Details({
               ))}
             </ol>
             <p className="cd-fine">
-              Your own roadmap is generated from your profile, with free courses
-              highlighted alongside certifications.
+              {hasProfile
+                ? 'Open your roadmap to see the milestones generated for your profile.'
+                : 'Your own roadmap is generated from your profile, with free courses highlighted alongside certifications.'}
             </p>
           </>
         )}
@@ -946,7 +1074,12 @@ function Details({
         )}
       </div>
 
-      {tab === 'Pathway' || tab === 'Opportunities' ? (
+      {hasProfile && onOpenRoadmap && tab === 'Pathway' ? (
+        <button type="button" className="cd-cta" onClick={onOpenRoadmap}>
+          View my learning roadmap
+          <ArrowRight size={18} aria-hidden="true" />
+        </button>
+      ) : !hasProfile && (tab === 'Pathway' || tab === 'Opportunities') ? (
         <a
           className="cd-cta"
           href={routes.onboarding}
@@ -985,7 +1118,7 @@ function Suggestions({
   onSelect: (id: string) => void
 }) {
   const byInterest = picked.length > 0
-  const list = careers
+  const list = useCatalogue()
     .filter((c) => visible[c.id] && (!byInterest || overlap[c.id] > 0))
     .sort((a, b) =>
       byInterest

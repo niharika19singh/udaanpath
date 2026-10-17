@@ -31,11 +31,9 @@ class RecommendationService:
         # 1. Academic & Stream Compatibility (35 max)
         eligible_streams = [s.lower() for s in (career.eligible_streams or [])]
         student_stream = (student.stream or "general").lower()
-        if student_stream in eligible_streams or "general" in eligible_streams:
+        if not eligible_streams or "all" in eligible_streams or student_stream in eligible_streams:
             score += 25.0
             reasons.append(f"Matches your educational stream ({student.stream.replace('_', ' ').title()})")
-        else:
-            score += 10.0
 
         education_hierarchy = {
             "10th_pass": 1,
@@ -44,13 +42,11 @@ class RecommendationService:
             "undergraduate": 4,
             "postgraduate": 5
         }
-        student_edu_level = education_hierarchy.get(student.education_level, 2)
-        career_req_level = education_hierarchy.get(career.entry_qualification, 2)
+        student_edu_level = education_hierarchy.get(student.education_level, 0)
+        career_req_level = education_hierarchy.get(career.entry_qualification, 99)
         if student_edu_level >= career_req_level:
             score += 10.0
             reasons.append(f"Satisfies entry prerequisite ({career.entry_qualification.replace('_', ' ').title()})")
-        else:
-            score += 3.0
 
         # 2. Skill Alignment (25 max)
         student_skill_tokens = self._normalize_tokens(student.skills or [])
@@ -78,22 +74,42 @@ class RecommendationService:
         if student.financial_constraint in ["high", "extreme"] or student.annual_family_income <= 180000:
             if career.financial_barrier == "low":
                 score += 15.0
-                reasons.append("Low training cost barrier with quick pathway to earning")
+                reasons.append("The catalog labels the financial barrier as low; confirm actual costs with a provider")
             elif career.financial_barrier == "moderate":
                 score += 9.0
             else:
                 score += 4.0
         else:
-            # For moderate/low constraint, reward high growth and starting salary
-            if career.growth_outlook.lower().startswith("very high") or career.starting_salary_inr >= 350000:
-                score += 15.0
-                reasons.append(f"Strong earning trajectory with high industry growth ({career.growth_outlook})")
-            else:
-                score += 10.0
+            score += 10.0
 
-        final_score = min(98.5, max(45.0, round(score, 1)))
-        combined_rationale = ". ".join(reasons) + "."
+        final_score = round(score, 1)
+        combined_rationale = ". ".join(reasons) if reasons else f"Possible option based on the listed entry requirements for {career.title}"
+        combined_rationale += "."
         return final_score, combined_rationale
+
+    def _career_is_reachable(self, student: StudentProfile, career: Career) -> bool:
+        eligible_streams = [stream.lower() for stream in (career.eligible_streams or [])]
+        student_stream = (student.stream or "").lower()
+        if eligible_streams and "all" not in eligible_streams and student_stream not in eligible_streams:
+            return False
+
+        education_hierarchy = {
+            "10th_pass": 1,
+            "12th_pass": 2,
+            "iti_diploma": 3,
+            "undergraduate": 4,
+            "postgraduate": 5,
+        }
+        student_level = education_hierarchy.get(student.education_level, 0)
+        required_level = education_hierarchy.get(career.entry_qualification, 99)
+        return student_level >= required_level
+
+    def _diversity_group(self, career: Career) -> str:
+        if career.category == "vocational_skilled_trades":
+            return "vocational"
+        description = f"{career.title} {career.sector}".lower()
+        stem_terms = ("technology", "technical", "data", "science", "engineering", "manufacturing", "healthcare", "diagnostic", "agriculture", "drone", "renewable")
+        return "stem" if any(term in description for term in stem_terms) else "non_stem"
 
     def recommend_careers(self, student_id: int, limit: int = 5) -> CareerRecommendationResponse:
         student = self.profile_repo.get_by_id(student_id)
@@ -113,6 +129,8 @@ class RecommendationService:
 
         scored_items = []
         for career in all_careers:
+            if not self._career_is_reachable(student, career):
+                continue
             match_score, rationale = self._score_career_for_student(student, career)
             item = CareerRecommendationItem(
                 career_id=career.id,
@@ -131,29 +149,37 @@ class RecommendationService:
             scored_items.append(item)
 
         # Sort by match score descending
-        scored_items.sort(key=lambda x: x.match_score, reverse=True)
+        scored_items.sort(key=lambda item: (-item.match_score, item.title.lower()))
 
         # Enforce diversity: balance categories so top recommendations aren't monolithic
         selected: List[CareerRecommendationItem] = []
-        categories_seen = set()
+        groups_seen = set()
 
         # First pass: pick best from diverse categories
         for item in scored_items:
-            if item.category not in categories_seen:
+            career = next(career for career in all_careers if career.id == item.career_id)
+            group = self._diversity_group(career)
+            if group not in groups_seen:
                 selected.append(item)
-                categories_seen.add(item.category)
-            if len(selected) >= limit:
+                groups_seen.add(group)
+            if len(selected) >= min(limit, 5):
                 break
 
         # Second pass: fill remaining slots with highest remaining scores
-        if len(selected) < limit:
+        if len(selected) < min(limit, 5):
             for item in scored_items:
                 if item not in selected:
                     selected.append(item)
-                if len(selected) >= limit:
+                if len(selected) >= min(limit, 5):
                     break
 
-        selected.sort(key=lambda x: x.match_score, reverse=True)
+        selected.sort(key=lambda item: (-item.match_score, item.title.lower()))
+        for item in selected:
+            alternatives = [
+                other.title for other in selected
+                if other.career_id != item.career_id and other.category != item.category
+            ][:2]
+            item.alternative_pathways = alternatives
 
         return CareerRecommendationResponse(
             student_id=student_id,

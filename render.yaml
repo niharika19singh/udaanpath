@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: udaanpath-api
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: "pip install --upgrade pip && pip install -r backend/requirements.txt"
+    startCommand: "python backend/data/seed.py && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: APP_NAME
+        value: UdaanPath
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: PYTHONPATH
+        value: "backend"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: udaanpath-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: '["*"]'
+      - key: SECRET_KEY
+        generateValue: true
+
+databases:
+  - name: udaanpath-db
+    region: singapore
+    plan: free
+    databaseName: udaanpath
+    user: udaanpath_user

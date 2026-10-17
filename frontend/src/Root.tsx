@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import App from './App.tsx'
-import CareerDiscovery from './careers/CareerDiscovery.tsx'
 import Landing from './landing/Landing.tsx'
 import { currentRoute, routes } from './router.ts'
 
@@ -17,8 +16,11 @@ function Root() {
     document.body.classList.toggle('is-landing', route === routes.home)
   }, [route])
 
-  if (route === routes.onboarding) return <App />
-  if (route === routes.careers) return <CareerDiscovery />
+  // Profile and Career Discovery are views of one portal, so student state
+  // and API data survive moving between them.
+  if (route === routes.onboarding || route === routes.careers) {
+    return <App route={route} />
+  }
   return <Landing />
 }
 

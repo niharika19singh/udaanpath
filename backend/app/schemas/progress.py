@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OpportunityApplicationCreate(BaseModel):
@@ -31,8 +31,7 @@ class OpportunityApplicationResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SkillBadgeCreate(BaseModel):
@@ -50,8 +49,7 @@ class SkillBadgeResponse(BaseModel):
     description: Optional[str]
     earned_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StudentDocumentCreate(BaseModel):
@@ -69,8 +67,7 @@ class StudentDocumentResponse(BaseModel):
     document_number_masked: Optional[str]
     uploaded_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StudentProgressOverview(BaseModel):

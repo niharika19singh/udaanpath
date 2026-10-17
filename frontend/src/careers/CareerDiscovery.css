@@ -1542,3 +1542,39 @@
     display: inline-flex;
   }
 }
+
+/* ---------- Backend profile match (only after a profile is submitted) ---- */
+
+.cd-rec {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--to) 40%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--from) 10%, rgba(3, 20, 13, 0.7));
+}
+
+.cd-rec-score {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--cd-muted);
+  font-size: 12.5px;
+}
+
+.cd-rec-score strong {
+  color: var(--cd-ink);
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+
+.cd-rec-why {
+  color: #cde3d6;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* Inside the portal the map supplies its own spacing. */
+.content.content--flush {
+  padding: 0;
+}
