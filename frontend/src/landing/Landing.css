@@ -171,10 +171,7 @@ body.is-landing {
   font-size: 16px;
   font-weight: 800;
   text-decoration: none;
-  /* --mx/--my come from the magnetic field in motion.ts */
-  transform: translate3d(var(--mx, 0px), var(--my, 0px), 0);
   transition:
-    transform 0.45s var(--ease-out),
     scale 0.3s var(--ease-out),
     box-shadow 0.3s ease;
 }
@@ -215,8 +212,6 @@ body.is-landing {
   color: var(--accent, var(--emerald)) !important;
   font-weight: 700;
   text-decoration: none;
-  transform: translate3d(var(--mx, 0px), var(--my, 0px), 0);
-  transition: transform 0.45s var(--ease-out);
 }
 
 .text-link:hover {
@@ -224,33 +219,32 @@ body.is-landing {
   text-underline-offset: 4px;
 }
 
-/* ================= Explore scene (pinned) ================= */
+/* ================= Explore scene ================= */
 
+/* One fixed coordinate system: nothing in the scene moves or scales the
+   layout. Only light animates (opacity and stroke dashes on the SVG). */
 .scene {
   position: relative;
-  height: calc(var(--steps) * 78svh + 22svh);
 }
 
 .scene-frame {
-  --px: 0;
-  --py: 0;
-  /* Width of the artwork: as wide as the reference layout, but never taller
-     than the frame. */
-  --ww: min(74vw, calc((100svh - var(--nav-height)) / 0.5622 * 0.96));
+  /* Width of the artwork: as wide as the reference layout, but short enough
+     that the tree and the career dock below it share one screen. */
+  --ww: min(72vw, calc((100svh - var(--nav-height) - 150px) / 0.5622));
+  --wh: calc(var(--ww) * 0.5622);
 
-  position: sticky;
-  top: var(--nav-height);
-  height: calc(100svh - var(--nav-height));
+  position: relative;
+  min-height: max(560px, calc(100svh - var(--nav-height)));
   overflow: hidden;
   isolation: isolate;
   background: var(--bg);
 }
 
 /* Light is added over everything (screen blend) so the artwork edges stay
-   seamless against the page background. */
+   seamless against the page background. Static. */
 .scene-atmos {
   position: absolute;
-  inset: -40px;
+  inset: 0;
   z-index: 3;
   mix-blend-mode: screen;
   pointer-events: none;
@@ -258,8 +252,6 @@ body.is-landing {
     radial-gradient(ellipse 45% 40% at 18% 30%, rgba(63, 180, 255, 0.09), transparent 70%),
     radial-gradient(ellipse 40% 35% at 85% 18%, rgba(189, 114, 255, 0.08), transparent 70%),
     radial-gradient(ellipse 70% 30% at 50% 100%, rgba(69, 255, 134, 0.12), transparent 70%);
-  transform: translate3d(calc(var(--px) * 14px), calc(var(--py) * 10px), 0);
-  transition: transform 0.8s var(--ease-out);
 }
 
 /* ---- Copy ---- */
@@ -271,15 +263,6 @@ body.is-landing {
   top: 50%;
   width: min(34vw, 560px);
   transform: translateY(-58%);
-  transition:
-    opacity 0.6s ease,
-    translate 0.9s var(--ease-out);
-}
-
-.scene:not([data-step='0']) .scene-copy {
-  opacity: 0;
-  translate: -56px 0;
-  pointer-events: none;
 }
 
 .hero-kicker {
@@ -301,7 +284,7 @@ body.is-landing {
   text-shadow: 0 2px 24px rgba(1, 26, 17, 0.9);
 }
 
-/* Words rise out of a mask, one after another. */
+/* Words rise out of a mask once, on load. */
 .word {
   display: inline-block;
   overflow: hidden;
@@ -315,8 +298,8 @@ body.is-landing {
 }
 
 .hero-title .word > span {
-  animation: word-rise 1s var(--ease-out) both;
-  animation-delay: calc(var(--w) * 90ms + 250ms);
+  animation: word-rise 0.9s var(--ease-out) both;
+  animation-delay: calc(var(--w) * 70ms + 150ms);
 }
 
 .word.accent > span {
@@ -333,7 +316,6 @@ body.is-landing {
   color: #d3eadc;
   font-size: clamp(16px, 1.2vw, 20px);
   line-height: 1.6;
-  animation: soft-in 1s var(--ease-out) 0.7s both;
 }
 
 .hero-actions {
@@ -342,7 +324,6 @@ body.is-landing {
   align-items: center;
   gap: 18px 22px;
   margin-top: 34px;
-  animation: soft-in 1s var(--ease-out) 0.9s both;
 }
 
 .hero-hint {
@@ -357,35 +338,28 @@ body.is-landing {
   color: var(--emerald);
 }
 
-/* ---- World: the artwork + live tree, moved by the camera ---- */
+/* ---- World: the artwork and live tree (never transformed) ---- */
 
+/* The anchor is the size container for the cqw units used by the labels and
+   panel outlines; the clipping lives on .world inside it. */
 .world-anchor {
   position: absolute;
   z-index: 1;
   right: -1vw;
-  top: calc(50% - var(--ww) * 0.2811 + 1vh);
+  top: max(8px, calc((100% - var(--wh) - 130px) / 2));
   width: var(--ww);
   aspect-ratio: 1672 / 940;
+  container-type: inline-size;
 }
 
 .world {
   position: absolute;
   inset: 0;
-  transform-origin: 0 0;
-  container-type: inline-size;
-  will-change: transform;
-  transition: transform 1.3s var(--ease-camera);
-}
-
-.world-depth {
-  position: absolute;
-  inset: 0;
   overflow: hidden;
-  transform: translate3d(calc(var(--px) * -12px), calc(var(--py) * -8px), 0);
-  transition: transform 0.9s var(--ease-out);
 }
 
-.world-depth::after {
+/* Soft edge fade into the page background. */
+.world::after {
   content: '';
   position: absolute;
   inset: -1px;
@@ -409,34 +383,16 @@ body.is-landing {
 .world-art-glow {
   filter: blur(10px) saturate(1.5) brightness(1.25);
   mix-blend-mode: screen;
-  opacity: 0.18;
-  will-change: opacity;
-  animation: glow-breathe 6s ease-in-out infinite;
+  opacity: 0.2;
 }
 
+/* Gentle dimming so the selected path reads clearly. */
 .world-veil {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 70% 70% at 56% 55%, rgba(1, 18, 11, 0.55), rgba(1, 14, 9, 0.85));
-  opacity: 0;
-  transition: opacity 0.7s ease;
+  background: radial-gradient(ellipse 70% 70% at 56% 55%, rgba(1, 18, 11, 0.45), rgba(1, 14, 9, 0.8));
+  opacity: 0.55;
   pointer-events: none;
-}
-
-.world[data-lit] .world-veil {
-  opacity: 0.78;
-}
-
-.scene[data-step='0'] .world[data-lit] .world-veil {
-  opacity: 0.5;
-}
-
-.scene.is-booting .world-veil {
-  animation: veil-lift 1.9s ease 0.15s both;
-}
-
-.scene[data-step='0'] .world {
-  cursor: pointer;
 }
 
 /* ---- The live SVG tree ---- */
@@ -446,7 +402,6 @@ body.is-landing {
   inset: 0;
   width: 100%;
   height: 100%;
-  overflow: visible;
   pointer-events: none;
 }
 
@@ -457,7 +412,6 @@ body.is-landing {
   stroke-linejoin: round;
 }
 
-.branch-grow,
 .branch-halo,
 .branch-core,
 .branch-twig {
@@ -465,99 +419,54 @@ body.is-landing {
   stroke-dashoffset: 1;
 }
 
-.branch-grow {
-  stroke: color-mix(in srgb, var(--accent) 55%, #ffffff);
-  stroke-width: 6;
-  opacity: 0;
-}
-
-.scene.is-booting .branch-grow {
-  animation: grow-branch 1.5s var(--ease-out) both;
-  animation-delay: calc(var(--i) * 120ms + 200ms);
-}
-
-.branch-hint {
-  stroke: var(--accent);
-  stroke-width: 18;
-  opacity: calc(var(--near, 0) * 0.32);
-  transition: opacity 0.3s ease;
-}
-
 .branch-halo {
   stroke: var(--accent);
   stroke-width: 26;
   opacity: 0.22;
-  transition: stroke-dashoffset 1s var(--ease-camera);
+  transition: stroke-dashoffset 0.7s var(--ease-out);
 }
 
 .branch-core {
   stroke: color-mix(in srgb, var(--accent) 55%, #ffffff);
   stroke-width: 7;
-  transition: stroke-dashoffset 1s var(--ease-camera);
+  transition: stroke-dashoffset 0.7s var(--ease-out);
 }
 
 .branch-twig {
   stroke: color-mix(in srgb, var(--accent) 70%, #ffffff);
   stroke-width: 6;
-  transition: stroke-dashoffset 0.45s ease;
+  transition: stroke-dashoffset 0.3s ease;
 }
 
-.branch[data-state='lit'] :is(.branch-halo, .branch-core),
-.world[data-outro] .branch :is(.branch-halo, .branch-core) {
+.branch[data-state='lit'] :is(.branch-halo, .branch-core) {
   stroke-dashoffset: 0;
-}
-
-.world[data-outro] .branch :is(.branch-halo, .branch-core) {
-  transition-delay: calc(var(--i) * 140ms + 300ms);
 }
 
 .branch[data-state='lit'] .branch-twig {
   stroke-dashoffset: 0;
-  transition-delay: 0.75s;
+  transition-delay: 0.45s;
 }
 
-.branch[data-state='dim'] .branch-hint {
+/* Light travels from the sprout along the trunk and the selected branch
+   only. Unselected branches run no animation at all. */
+.comet {
+  stroke: color-mix(in srgb, var(--accent, #a8ffcf) 45%, #ffffff);
+  stroke-width: 9;
+  stroke-dasharray: 0.06 1.2;
+  stroke-dashoffset: 0.06;
   opacity: 0;
 }
 
-/* Pulses of light travel from the sprout out along each branch. */
-.comet {
-  stroke: color-mix(in srgb, var(--accent, #a8ffcf) 45%, #ffffff);
-  stroke-width: 8;
-  stroke-dasharray: 0.06 1.2;
-  stroke-dashoffset: 0.06;
-  animation: comet 3.6s linear infinite;
-  animation-delay: calc(var(--i, 0) * -0.6s);
-  transition: opacity 0.4s;
-}
-
-.comet.late {
-  animation-delay: calc(var(--i) * -0.6s - 1.8s);
-}
-
-.branch[data-state='lit'] .comet {
-  stroke-width: 10;
-  animation-duration: 1.6s;
-}
-
-.branch[data-state='dim'] .comet {
-  opacity: 0.12;
+.branch[data-state='lit'] .comet,
+.trunk .comet {
+  opacity: 1;
+  animation: comet 2.8s linear infinite;
 }
 
 .trunk .comet {
   --accent: #c8ffd9;
+  stroke-width: 7;
   animation-duration: 4.4s;
-}
-
-.trunk-core {
-  stroke: transparent;
-}
-
-.trunk-bulb {
-  fill: rgba(168, 255, 207, 0.6) !important;
-  mix-blend-mode: screen;
-  opacity: 0;
-  animation: bulb-breathe 5s ease-in-out infinite;
 }
 
 .branch-node {
@@ -565,12 +474,7 @@ body.is-landing {
   stroke: #ffffff;
   stroke-width: 3;
   opacity: 0;
-  transform: scale(0.4);
-  transform-box: fill-box;
-  transform-origin: center;
-  transition:
-    opacity 0.4s ease,
-    transform 0.6s var(--ease-out);
+  transition: opacity 0.35s ease;
 }
 
 .branch-ring {
@@ -583,16 +487,48 @@ body.is-landing {
 
 .branch[data-state='lit'] .branch-node {
   opacity: 1;
-  transform: scale(1.3);
-  transition-delay: 0.65s;
+  transition-delay: 0.4s;
 }
 
 .branch[data-state='lit'] .branch-ring {
-  animation: ring 1.8s ease-out 0.7s infinite;
+  animation: ring 2.6s ease-out 0.6s infinite;
+}
+
+/* A wide invisible stroke makes each branch easy to pick. */
+.branch-hit {
+  stroke: transparent;
+  stroke-width: 44;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+/* ---- Destination card: outline on the drawn glass panel ---- */
+
+.destination {
+  position: absolute;
+  z-index: 2;
+  width: 19.4cqw;
+  height: 6.4cqw;
+  border: 2px solid var(--accent);
+  border-radius: 1.6cqw;
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--accent) 70%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--accent) 30%, transparent);
+  transform: translate(-50%, -50%) rotate(var(--tilt));
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.destination[data-on] {
+  opacity: 1;
+  transition-delay: 0.3s;
 }
 
 /* ---- Career labels on the drawn glass panels ---- */
 
+/* The list covers the whole artwork, so it lets clicks through to the
+   branches; only the label buttons themselves catch the pointer. */
 .world-labels {
   position: absolute;
   inset: 0;
@@ -600,6 +536,11 @@ body.is-landing {
   margin: 0;
   padding: 0;
   list-style: none;
+  pointer-events: none;
+}
+
+.world-labels button {
+  pointer-events: auto;
 }
 
 .world-labels li {
@@ -608,9 +549,7 @@ body.is-landing {
   top: var(--y);
   width: 9.6cqw;
   transform: translate(-50%, -50%) rotate(var(--tilt));
-  transition:
-    opacity 0.5s ease,
-    scale 0.5s var(--ease-out);
+  transition: opacity 0.4s ease;
 }
 
 .world-labels button {
@@ -629,10 +568,6 @@ body.is-landing {
     0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
-.world-labels button:focus-visible {
-  outline-color: var(--accent);
-}
-
 .world-labels strong {
   font-size: max(11px, 1.2cqw);
   line-height: 1.15;
@@ -646,10 +581,6 @@ body.is-landing {
   font-weight: 600;
 }
 
-.world-labels li[data-state='lit'] {
-  scale: 1.06;
-}
-
 .world-labels li[data-state='lit'] strong {
   text-shadow:
     0 0 14px var(--accent),
@@ -657,382 +588,199 @@ body.is-landing {
 }
 
 .world-labels li[data-state='dim'] {
-  opacity: 0.35;
+  opacity: 0.6;
 }
 
-/* ---- Foreground motes (parallax depth) ---- */
+.world-labels li[data-state='dim']:hover {
+  opacity: 1;
+}
 
-.scene-motes {
+/* ---- Career dock: selector + information panel ---- */
+
+/* Centred under the sprout, so the panel reads as the base every lit
+   branch grows from. */
+.career-dock {
   position: absolute;
-  inset: 0;
   z-index: 5;
-  pointer-events: none;
+  bottom: 2.5%;
+  left: calc(100% + 1vw - var(--ww) * 0.444);
+  width: min(620px, 48vw);
+  transform: translateX(-50%);
 }
 
-.scene-motes span {
+.career-dock::before {
+  content: '';
   position: absolute;
-  width: var(--s);
-  height: var(--s);
-  border-radius: 50%;
-  background: var(--c);
-  box-shadow:
-    0 0 12px var(--c),
-    0 0 26px var(--c);
-  opacity: 0.55;
-  transform: translate3d(
-    calc(var(--px) * var(--d) * 18px),
-    calc(var(--py) * var(--d) * 12px),
-    0
-  );
-  transition: transform 1s var(--ease-out);
-  animation: mote-float 8s ease-in-out infinite var(--delay);
+  bottom: 100%;
+  left: 50%;
+  width: 2px;
+  height: 26px;
+  margin-left: -1px;
+  background: linear-gradient(to top, var(--accent), transparent);
+  box-shadow: 0 0 10px var(--accent);
+  transition: background 0.4s;
 }
 
-/* ---- Career card shown at each camera stop ---- */
-
-.path-card-slot {
-  position: absolute;
-  z-index: 6;
-  left: 4.4vw;
-  top: 50%;
-  width: min(400px, 32vw);
-  transform: translateY(-50%);
+.career-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
-.path-card {
-  padding: 28px 28px 26px;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  border-radius: 24px;
-  background:
-    linear-gradient(150deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
-    rgba(2, 22, 14, 0.84);
-  box-shadow:
-    0 0 40px color-mix(in srgb, var(--accent) 18%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  animation: card-in 0.9s var(--ease-out) 0.35s both;
-}
-
-.path-card-index {
-  margin: 0;
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-}
-
-.path-card-index span {
+.career-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(140, 255, 190, 0.16);
+  border-radius: 999px;
+  background: rgba(1, 20, 13, 0.78);
   color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.3s,
+    border-color 0.3s,
+    color 0.3s,
+    box-shadow 0.3s;
 }
 
-.path-card-icon {
-  width: 52px;
-  height: 52px;
-  margin: 18px 0 14px;
+.career-tabs button:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 55%, #0a2a1c);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.career-tabs button[aria-selected='true'] {
+  color: var(--ink);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, #021a10);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.career-tabs button[aria-selected='true'] .tab-dot {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.career-tabs button:focus-visible {
+  outline-color: var(--accent);
+}
+
+.career-panel {
+  padding: 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 20px;
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%),
+    rgba(2, 22, 14, 0.9);
+  box-shadow:
+    0 0 32px color-mix(in srgb, var(--accent) 16%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    border-color 0.4s,
+    box-shadow 0.4s;
+}
+
+.career-panel-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(170px, 0.8fr);
+  gap: 14px 18px;
+  align-items: start;
+  animation: panel-in 0.35s ease both;
+}
+
+.career-panel-icon {
+  width: 46px;
+  height: 46px;
   display: grid;
   place-items: center;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
-  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
-.path-card h2 {
+.career-panel-index {
   margin: 0;
-  font-size: clamp(24px, 2.2vw, 34px);
-  line-height: 1.1;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.career-panel-index span {
+  color: var(--ink-muted);
+}
+
+.career-panel h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+  line-height: 1.15;
   letter-spacing: -0.02em;
 }
 
-.path-card-blurb {
-  margin: 12px 0 0;
+.career-panel-blurb {
+  margin: 8px 0 0;
   color: #cfe6d8;
-  font-size: 16px;
-  line-height: 1.55;
+  font-size: 14.5px;
+  line-height: 1.5;
 }
 
-.path-card-label {
-  margin: 18px 0 8px;
+.career-panel-label {
+  margin: 0 0 6px;
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.path-card ul {
+.career-panel ul {
   display: grid;
-  gap: 6px;
-  margin: 0 0 20px;
+  gap: 4px;
+  margin: 0 0 10px;
   padding: 0;
   list-style: none;
 }
 
-.path-card li {
+.career-panel li {
   position: relative;
-  padding-left: 18px;
+  padding-left: 16px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.35;
 }
 
-.path-card li::before {
+.career-panel li::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0.55em;
-  width: 8px;
-  height: 8px;
+  top: 0.5em;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 8px var(--accent);
 }
 
-/* ---- Closing beat of the scene ---- */
-
-.scene-outro {
-  position: absolute;
-  z-index: 6;
-  left: 50%;
-  top: 4%;
-  width: min(900px, calc(100% - 32px));
-  transform: translateX(-50%);
-  text-align: center;
-  opacity: 0;
-  translate: 0 24px;
-  transition:
-    opacity 0.7s ease,
-    translate 0.9s var(--ease-out);
-  pointer-events: none;
-}
-
-.scene[data-step='7'] .scene-outro {
-  opacity: 1;
-  translate: 0 0;
-  transition-delay: 0.5s;
-}
-
-.scene-outro p {
-  margin: 0 0 8px;
-  color: var(--emerald);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-}
-
-.scene-outro h2 {
-  margin: 0;
-  font-size: clamp(30px, 4vw, 64px);
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  text-shadow: 0 2px 30px rgba(1, 26, 17, 0.95);
-}
-
-.scene-outro h2 span {
-  color: var(--emerald);
-  text-shadow: 0 0 26px rgba(69, 255, 134, 0.6);
-}
-
-/* ---- Path rail ---- */
-
-.scene-rail {
-  position: absolute;
-  z-index: 6;
-  right: 1.6vw;
-  top: 50%;
-  transform: translateY(-50%);
-  transition:
-    opacity 0.5s ease,
-    visibility 0.5s;
-}
-
-.scene[data-step='0'] .scene-rail {
-  opacity: 0;
-  visibility: hidden;
-}
-
-.scene-rail ol {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 10px 8px;
-  list-style: none;
-  border: 1px solid rgba(140, 255, 190, 0.12);
-  border-radius: 999px;
-  background: rgba(1, 20, 13, 0.6);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.scene-rail button {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-
-.rail-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 45%, #0a2a1c);
-  transition:
-    transform 0.4s var(--ease-out),
-    background 0.3s,
-    box-shadow 0.3s;
-}
-
-.scene-rail button[aria-current] .rail-dot {
-  background: var(--accent);
-  transform: scale(1.5);
-  box-shadow: 0 0 12px var(--accent);
-}
-
-.rail-label {
-  position: absolute;
-  right: calc(100% + 12px);
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: rgba(1, 20, 13, 0.85);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-  opacity: 0;
-  translate: 8px 0;
-  transition:
-    opacity 0.3s,
-    translate 0.3s var(--ease-out);
-  pointer-events: none;
-}
-
-.scene-rail button:hover .rail-label,
-.scene-rail button:focus-visible .rail-label,
-.scene-rail button[aria-current] .rail-label {
-  opacity: 1;
-  translate: 0 0;
-}
-
-/* ---- Journey bar + scroll cue (overview only) ---- */
-
-.journey-bar {
-  position: absolute;
-  z-index: 4;
-  left: 50%;
-  bottom: 7%;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: clamp(640px, 46vw, 780px);
-  margin: 0;
-  padding: 14px;
-  list-style: none;
-  border: 1px solid rgba(140, 255, 190, 0.2);
-  border-radius: 20px;
-  background: rgba(4, 30, 20, 0.6);
-  box-shadow:
-    0 0 30px rgba(69, 255, 134, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  transform: translateX(-50%);
-  transition:
-    opacity 0.5s ease,
-    translate 0.7s var(--ease-out),
-    visibility 0.5s;
-  animation: soft-in 1s var(--ease-out) 1.2s both;
-}
-
-.journey-bar li {
-  position: relative;
-}
-
-.journey-bar a {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 6px 14px;
-  border-radius: 14px;
-  text-decoration: none;
-  transition: background 0.25s;
-}
-
-.journey-bar a:hover {
-  background: rgba(69, 255, 134, 0.08);
-}
-
-.journey-icon {
-  flex: none;
-  width: 34px;
-  height: 34px;
-  color: var(--emerald);
-  filter: drop-shadow(0 0 8px rgba(69, 255, 134, 0.7));
-}
-
-.journey-bar span {
-  font-size: 15px;
-  line-height: 1.35;
-}
-
-.journey-bar strong {
-  display: block;
-}
-
-.journey-chevron {
-  position: absolute;
-  right: -6px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--ink-muted);
-  font-size: 22px;
-}
-
-.scene-scroll {
-  position: absolute;
-  z-index: 4;
-  left: 50%;
-  bottom: 1.4%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  transform: translateX(-50%);
-  color: var(--ink-muted);
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  transition: opacity 0.5s;
-}
-
-.scene-scroll span {
-  width: 18px;
-  height: 28px;
-  border: 1.5px solid rgba(236, 255, 243, 0.7);
-  border-radius: 10px;
-  position: relative;
-}
-
-.scene-scroll span::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 5px;
-  width: 3px;
-  height: 6px;
-  margin-left: -1.5px;
-  border-radius: 2px;
-  background: var(--emerald);
-  animation: scroll-cue 1.8s ease-in-out infinite;
-}
-
-.scene:not([data-step='0']) :is(.journey-bar, .scene-scroll) {
-  opacity: 0;
-  visibility: hidden;
-  translate: 0 20px;
+.career-panel .text-link {
+  font-size: 14px;
 }
 
 /* ================= Chapters ================= */
@@ -1615,10 +1363,7 @@ body.is-landing {
   background: none;
   color: var(--ink);
   cursor: pointer;
-  transform: translate(-50%, -50%) translate3d(var(--mx, 0px), var(--my, 0px), 0);
-  transition: transform 0.45s var(--ease-out);
-  animation: fruit-bob 5s ease-in-out infinite;
-  animation-delay: calc(var(--i) * -1.2s);
+  transform: translate(-50%, -50%);
 }
 
 .fruit-orb {
@@ -1820,52 +1565,6 @@ body.is-landing {
   margin-bottom: 36px;
 }
 
-/* ================= Cursor light ================= */
-
-.cursor-light {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 60;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.cursor-light[data-visible='true'] {
-  opacity: 1;
-}
-
-.cursor-light span {
-  position: absolute;
-  width: 26px;
-  height: 26px;
-  margin: -13px 0 0 -13px;
-  border: 1.5px solid rgba(168, 255, 207, 0.7);
-  border-radius: 50%;
-  box-shadow: 0 0 14px rgba(69, 255, 134, 0.45);
-  transition:
-    scale 0.35s var(--ease-out),
-    background 0.35s,
-    border-color 0.35s;
-}
-
-.cursor-light::before {
-  content: '';
-  position: absolute;
-  width: 360px;
-  height: 360px;
-  margin: -180px 0 0 -180px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(69, 255, 134, 0.09), transparent 65%);
-}
-
-.cursor-light[data-hot='true'] span {
-  scale: 1.9;
-  border-color: var(--emerald);
-  background: rgba(69, 255, 134, 0.1);
-}
-
 /* ================= Footer ================= */
 
 .landing-footer {
@@ -1889,17 +1588,23 @@ body.is-landing {
 /* ================= Responsive ================= */
 
 @media (max-width: 1099px) {
-  .scene {
-    height: calc(var(--steps) * 72svh + 28svh);
+  /* Below desktop the scene becomes a deliberate stack — copy, tree,
+     selector, panel — in normal flow, instead of a squeezed overlay. */
+  .scene-frame {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 0 36px;
   }
 
   .scene-copy {
-    left: 16px;
-    right: 16px;
-    top: 5%;
+    position: relative;
+    left: auto;
+    top: auto;
     width: auto;
-    margin: 0 auto;
     max-width: 640px;
+    padding: 0 16px;
     transform: none;
     text-align: center;
   }
@@ -1921,76 +1626,19 @@ body.is-landing {
   }
 
   .world-anchor {
+    position: relative;
     right: auto;
-    left: -17%;
     top: auto;
-    bottom: 2%;
-    width: 128%;
-  }
-
-  .world-labels span {
-    display: none;
-  }
-
-  .path-card-slot {
-    left: 16px;
-    right: 16px;
-    top: auto;
-    bottom: 16px;
-    width: auto;
-    max-width: 560px;
-    margin: 0 auto;
-    transform: none;
-  }
-
-  .path-card {
-    padding: 18px 20px;
-  }
-
-  .path-card-icon {
-    display: none;
-  }
-
-  .path-card h2 {
-    margin-top: 6px;
-    font-size: 24px;
-  }
-
-  .path-card-blurb {
-    margin-top: 6px;
-    font-size: 15px;
-  }
-
-  .path-card-label {
+    width: min(100%, 900px);
     margin-top: 12px;
   }
 
-  .path-card ul {
-    margin-bottom: 12px;
-  }
-
-  .scene-rail {
-    top: 14px;
-    right: 50%;
-    transform: translateX(50%);
-  }
-
-  .scene-rail ol {
-    display: flex;
-    padding: 4px 8px;
-  }
-
-  .rail-label {
-    display: none;
-  }
-
-  .scene-outro {
-    top: 6%;
-  }
-
-  .journey-bar,
-  .scene-scroll {
-    display: none;
+  .career-dock {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: min(680px, calc(100% - 32px));
+    transform: none;
   }
 
   .discover-grid {
@@ -2061,15 +1709,33 @@ body.is-landing {
 }
 
 @media (max-width: 720px) {
-  .world-anchor {
-    left: -41%;
-    width: 172%;
+  /* Labels are too small to read on the panels at phone width; the tab
+     grid below carries the choice, and the panel outline still lights. */
+  .world-labels {
+    display: none;
+  }
+
+  .career-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .career-tabs button {
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .career-panel-body {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .career-panel-side {
+    grid-column: 1 / -1;
   }
 
   /* Fewer composited layers on small, often low-end, devices. */
-  .world-art-glow,
-  .comet.late,
-  .scene-motes span:nth-child(n + 5) {
+  .world-art-glow {
     display: none;
   }
 
@@ -2133,36 +1799,21 @@ body.is-landing {
   }
 }
 
-@keyframes veil-lift {
-  from {
-    opacity: 0.92;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes grow-branch {
-  0% {
-    stroke-dashoffset: 1;
-    opacity: 1;
-  }
-  70% {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-  100% {
-    stroke-dashoffset: 0;
-    opacity: 0;
-  }
-}
-
 @keyframes comet {
   from {
     stroke-dashoffset: 0.06;
   }
   to {
     stroke-dashoffset: -1.02;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
@@ -2175,36 +1826,6 @@ body.is-landing {
   100% {
     opacity: 0;
     transform: scale(2.6);
-  }
-}
-
-@keyframes bulb-breathe {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  50% {
-    opacity: 0.28;
-  }
-}
-
-@keyframes glow-breathe {
-  0%,
-  100% {
-    opacity: 0.1;
-  }
-  50% {
-    opacity: 0.38;
-  }
-}
-
-@keyframes mote-float {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  50% {
-    translate: 6px -18px;
   }
 }
 
@@ -2221,20 +1842,6 @@ body.is-landing {
   }
 }
 
-@keyframes scroll-cue {
-  0% {
-    opacity: 0;
-    translate: 0 0;
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    translate: 0 10px;
-  }
-}
-
 @keyframes seed-pulse {
   0%,
   100% {
@@ -2244,16 +1851,6 @@ body.is-landing {
   50% {
     transform: scale(1.15);
     opacity: 1;
-  }
-}
-
-@keyframes fruit-bob {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  50% {
-    translate: 0 -8px;
   }
 }
 
@@ -2298,8 +1895,7 @@ body.is-landing {
   }
 
   .comet,
-  .branch-grow,
-  .scene-motes,
+  .branch-ring,
   .world-art-glow {
     display: none;
   }

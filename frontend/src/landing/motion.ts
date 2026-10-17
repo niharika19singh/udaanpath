@@ -1,27 +1,4 @@
-import {
-  useEffect,
-  useState,
-  useSyncExternalStore,
-  type RefObject,
-} from 'react'
-
-const mediaStore = (query: string) => ({
-  subscribe: (onChange: () => void) => {
-    const list = window.matchMedia(query)
-    list.addEventListener('change', onChange)
-    return () => list.removeEventListener('change', onChange)
-  },
-  get: () => window.matchMedia(query).matches,
-})
-
-const reduced = mediaStore('(prefers-reduced-motion: reduce)')
-const finePointer = mediaStore('(any-hover: hover) and (any-pointer: fine)')
-
-export const useReducedMotion = () =>
-  useSyncExternalStore(reduced.subscribe, reduced.get, () => false)
-
-export const useFinePointer = () =>
-  useSyncExternalStore(finePointer.subscribe, finePointer.get, () => false)
+import { useEffect, useState, type RefObject } from 'react'
 
 /**
  * 0 → 1 progress of an element scrolling through the viewport. Writes a
@@ -34,7 +11,7 @@ export function useScrollProgress(
   {
     mode = 'through',
     steps = 100,
-  }: { mode?: 'through' | 'pinned' | 'reading'; steps?: number } = {},
+  }: { mode?: 'through' | 'reading'; steps?: number } = {},
 ) {
   const [value, setValue] = useState(0)
 
@@ -48,16 +25,13 @@ export function useScrollProgress(
       frame = 0
       const rect = el.getBoundingClientRect()
       const vh = window.innerHeight
-      // "pinned": progress while a tall section scrolls past a sticky child.
       // "reading": how far down the element a line just below mid-screen has
       //   reached, so a growing line can track the reader's eye.
       // "through": progress from entering the bottom to the centre of the view.
       const raw =
-        mode === 'pinned'
-          ? -rect.top / Math.max(1, rect.height - vh)
-          : mode === 'reading'
-            ? (vh * 0.62 - rect.top) / Math.max(1, rect.height)
-            : (vh - rect.top) / (vh * 0.5 + rect.height * 0.5)
+        mode === 'reading'
+          ? (vh * 0.62 - rect.top) / Math.max(1, rect.height)
+          : (vh - rect.top) / (vh * 0.5 + rect.height * 0.5)
       const p = Math.min(1, Math.max(0, raw))
       el.style.setProperty('--progress', p.toFixed(4))
       const coarse = Math.round(p * steps) / steps
@@ -120,54 +94,4 @@ export function useOnScreen(ref: RefObject<HTMLElement | null>) {
     return () => io.disconnect()
   }, [ref])
   return visible
-}
-
-/**
- * One document-level listener gives every `[data-magnetic]` element a gentle
- * pull towards the pointer. Transform-only, so it stays on the compositor.
- */
-export function useMagneticField(enabled: boolean) {
-  useEffect(() => {
-    if (!enabled) return
-    let frame = 0
-    let pointer = { x: 0, y: 0 }
-    const active = new Set<HTMLElement>()
-
-    const update = () => {
-      frame = 0
-      document
-        .querySelectorAll<HTMLElement>('[data-magnetic]')
-        .forEach((el) => {
-          const r = el.getBoundingClientRect()
-          const cx = r.left + r.width / 2
-          const cy = r.top + r.height / 2
-          const dx = pointer.x - cx
-          const dy = pointer.y - cy
-          const reach = Math.max(r.width, r.height) * 0.9
-          if (Math.abs(dx) < reach && Math.abs(dy) < reach) {
-            el.style.setProperty('--mx', `${(dx * 0.22).toFixed(1)}px`)
-            el.style.setProperty('--my', `${(dy * 0.3).toFixed(1)}px`)
-            active.add(el)
-          } else if (active.has(el)) {
-            el.style.setProperty('--mx', '0px')
-            el.style.setProperty('--my', '0px')
-            active.delete(el)
-          }
-        })
-    }
-    const onMove = (event: PointerEvent) => {
-      pointer = { x: event.clientX, y: event.clientY }
-      if (!frame) frame = requestAnimationFrame(update)
-    }
-
-    window.addEventListener('pointermove', onMove, { passive: true })
-    return () => {
-      cancelAnimationFrame(frame)
-      window.removeEventListener('pointermove', onMove)
-      active.forEach((el) => {
-        el.style.removeProperty('--mx')
-        el.style.removeProperty('--my')
-      })
-    }
-  }, [enabled])
 }

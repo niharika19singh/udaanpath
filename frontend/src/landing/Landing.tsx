@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Leaf, Menu, X } from 'lucide-react'
 import { linkTo, routes } from '../router.ts'
 import { Discover, FinalCta, Learn, Opportunities } from './Chapters.tsx'
-import CursorLight from './CursorLight.tsx'
 import ExploreScene from './ExploreScene.tsx'
-import { useFinePointer, useMagneticField, useReducedMotion } from './motion.ts'
 import './Landing.css'
 
 const chapters = [
@@ -17,12 +15,6 @@ const chapters = [
 function Landing() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [current, setCurrent] = useState('explore')
-  const reduced = useReducedMotion()
-  const fine = useFinePointer()
-  const rich = fine && !reduced
-
-  useMagneticField(rich)
-
   useEffect(() => {
     if (!menuOpen) return
     const onKey = (event: KeyboardEvent) => {
@@ -54,7 +46,6 @@ function Landing() {
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      {rich && <CursorLight />}
 
       <header className="landing-nav">
         <nav className="landing-nav-inner" aria-label="Main">
@@ -99,7 +90,6 @@ function Landing() {
             </ul>
             <a
               className="neon-button small"
-              data-magnetic
               href={routes.onboarding}
               onClick={linkTo(routes.onboarding)}
             >

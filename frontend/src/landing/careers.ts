@@ -24,6 +24,8 @@ export type Career = {
   node: [number, number]
   /** Centre of the empty area on the drawn glass panel, and its tilt. */
   label: [number, number]
+  /** Centre of the whole drawn glass panel (its destination card). */
+  panel: [number, number]
   tilt: number
 }
 
@@ -49,6 +51,7 @@ export const careers: Career[] = [
     twig: 'M 700 303 C 694 296, 688 285, 684 276',
     node: [700, 303],
     label: [585, 228],
+    panel: [562, 221],
     tilt: 14,
   },
   {
@@ -66,6 +69,7 @@ export const careers: Career[] = [
     twig: 'M 660 481 C 632 476, 608 466, 588 456',
     node: [660, 481],
     label: [450, 401],
+    panel: [428, 397],
     tilt: 11,
   },
   {
@@ -83,6 +87,7 @@ export const careers: Career[] = [
     twig: 'M 708 608 C 694 606, 682 603, 670 600',
     node: [708, 608],
     label: [535, 562],
+    panel: [511, 559],
     tilt: 6.5,
   },
   {
@@ -103,6 +108,7 @@ export const careers: Career[] = [
     twig: 'M 1071 327 C 1088 314, 1104 303, 1119 293',
     node: [1071, 327],
     label: [1260, 200],
+    panel: [1241, 204],
     tilt: -13.9,
   },
   {
@@ -120,6 +126,7 @@ export const careers: Career[] = [
     twig: 'M 1261 455 C 1278 450, 1294 446, 1308 442',
     node: [1261, 455],
     label: [1470, 385],
+    panel: [1458, 386],
     tilt: -8.3,
   },
   {
@@ -137,6 +144,7 @@ export const careers: Career[] = [
     twig: 'M 1130 592 C 1156 594, 1182 596, 1206 598',
     node: [1130, 592],
     label: [1370, 588],
+    panel: [1356, 587],
     tilt: 3,
   },
 ]

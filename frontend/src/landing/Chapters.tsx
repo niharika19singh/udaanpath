@@ -533,7 +533,6 @@ export function Opportunities() {
                 aria-selected={active === i}
                 aria-controls="fruit-panel"
                 className="fruit"
-                data-magnetic
                 style={
                   {
                     '--accent': k.accent,
@@ -637,7 +636,6 @@ export function FinalCta() {
         </p>
         <a
           className="neon-button large"
-          data-magnetic
           href={routes.onboarding}
           onClick={linkTo(routes.onboarding)}
         >
