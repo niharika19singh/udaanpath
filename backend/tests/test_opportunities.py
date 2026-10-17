@@ -119,3 +119,30 @@ def test_match_scores_all_before_sorting_and_limit(client: TestClient, db_sessio
         "citi-india-youth-employability",
         "naps-apprenticeship-promotion",
     ]
+
+
+def test_match_returns_empty_when_type_has_no_records(client: TestClient, db_session: Session):
+    seed_sample_opportunities(db_session)
+    profile_payload = {
+        "full_name": "No Match Student",
+        "email": "no.match.opportunities@example.com",
+        "age": 19,
+        "gender": "female",
+        "category": "General",
+        "state": "Uttar Pradesh",
+        "district": "Varanasi",
+        "annual_family_income": 180000.0,
+        "education_level": "12th_pass",
+        "stream": "science_pcm",
+        "percentage_marks": 80.0,
+    }
+    student_id = client.post("/api/v1/profiles/", json=profile_payload).json()["id"]
+
+    response = client.post("/api/v1/opportunities/match", json={
+        "student_id": student_id,
+        "type": "no-such-opportunity-type",
+    })
+
+    assert response.status_code == 200
+    assert response.json()["total_matches"] == 0
+    assert response.json()["opportunities"] == []
