@@ -40,6 +40,18 @@ import {
   type PathwayResponse,
   type AiAdvisorResponse,
 } from './api/client'
+import {
+  eligibilityLabel,
+  optionLabel,
+  optionValue,
+  readStoredLang,
+  storeLang,
+  t as translate,
+  tParts,
+  type Lang,
+  type MessageKey,
+  type Vars,
+} from './i18n'
 import './App.css'
 
 type FormData = {
@@ -90,69 +102,74 @@ const initialForm: FormData = {
   financial_constraint: 'High',
 }
 
-const steps = [
-  {
-    title: 'About You',
-    subtitle: "Let's start with some basic information.",
-    icon: Sprout,
-  },
-  {
-    title: 'Education',
-    subtitle: 'Help us understand your academic background',
-    icon: GraduationCap,
-  },
-  {
-    title: 'Skills & Interests',
-    subtitle: 'What are you good at and what interests you?',
-    icon: Brain,
-  },
-  {
-    title: 'Financial Background',
-    subtitle: 'This helps us find suitable opportunities for you',
-    icon: Wallet,
-  },
+const steps: {
+  titleKey: MessageKey
+  subtitleKey: MessageKey
+  icon: LucideIcon
+}[] = [
+  { titleKey: 'step1Title', subtitleKey: 'step1Subtitle', icon: Sprout },
+  { titleKey: 'step2Title', subtitleKey: 'step2Subtitle', icon: GraduationCap },
+  { titleKey: 'step3Title', subtitleKey: 'step3Subtitle', icon: Brain },
+  { titleKey: 'step4Title', subtitleKey: 'step4Subtitle', icon: Wallet },
 ]
 
-type NavId = 'profile' | 'careers' | 'pathways' | 'opportunities' | 'advisor'
+type NavId =
+  | 'profile'
+  | 'careers'
+  | 'pathways'
+  | 'opportunities'
+  | 'advisor'
+  | 'educators'
 
-const sideNavItems: { id: NavId; label: string; icon: LucideIcon }[] = [
-  { id: 'profile', label: 'Student Profile', icon: UserRound },
-  { id: 'careers', label: 'Career Discovery', icon: Compass },
-  { id: 'pathways', label: 'Learning Roadmap', icon: BookOpen },
-  { id: 'opportunities', label: 'Opportunities', icon: BriefcaseBusiness },
-  { id: 'advisor', label: 'AI Advisor', icon: Brain },
+const sideNavItems: { id: NavId; labelKey: MessageKey; icon: LucideIcon }[] = [
+  { id: 'profile', labelKey: 'sideProfile', icon: UserRound },
+  { id: 'careers', labelKey: 'sideCareers', icon: Compass },
+  { id: 'pathways', labelKey: 'sideRoadmap', icon: BookOpen },
+  { id: 'opportunities', labelKey: 'sideOpportunities', icon: BriefcaseBusiness },
+  { id: 'advisor', labelKey: 'sideAdvisor', icon: Brain },
 ]
 
-const topNav = [
-  'Home',
-  'Explore Careers',
-  'Learning Paths',
-  'Opportunities',
-  'For Educators',
+// The top navigation reuses the same `activeNav` state as the sidebar.
+const topNav: { labelKey: MessageKey; target: NavId }[] = [
+  { labelKey: 'navHome', target: 'profile' },
+  { labelKey: 'navExploreCareers', target: 'careers' },
+  { labelKey: 'navLearningPaths', target: 'pathways' },
+  { labelKey: 'navOpportunities', target: 'opportunities' },
+  { labelKey: 'navForEducators', target: 'educators' },
 ]
 
-const infoPoints: { title: string; text: string; icon: LucideIcon }[] = [
-  {
-    title: 'Career paths that fit you',
-    text: 'Explore options based on your strengths and interests across tech, trades, government & creative.',
-    icon: Compass,
-  },
-  {
-    title: 'Learning plans you can follow',
-    text: 'Get 4-stage milestone roadmaps with free SWAYAM and NPTEL certified resources.',
-    icon: BookOpen,
-  },
-  {
-    title: 'Scholarships worth exploring',
-    text: 'Find verified government schemes, scholarships, and apprenticeships you qualify for.',
-    icon: BriefcaseBusiness,
-  },
+const infoPoints: {
+  titleKey: MessageKey
+  textKey: MessageKey
+  icon: LucideIcon
+}[] = [
+  { titleKey: 'info1Title', textKey: 'info1Text', icon: Compass },
+  { titleKey: 'info2Title', textKey: 'info2Text', icon: BookOpen },
+  { titleKey: 'info3Title', textKey: 'info3Text', icon: BriefcaseBusiness },
 ]
 
-type FieldErrors = Partial<Record<keyof FormData, string>>
+// Errors are stored as message keys (not text) so a visible error switches
+// language immediately, without re-running validation.
+type FieldErrors = Partial<Record<keyof FormData, MessageKey>>
 
 function App() {
   const [activeNav, setActiveNav] = useState<NavId>('profile')
+  const [lang, setLang] = useState<Lang>(readStoredLang)
+  const t = (key: MessageKey, vars?: Vars) => translate(lang, key, vars)
+
+  const changeLang = (next: Lang) => {
+    setLang(next)
+    storeLang(next)
+  }
+
+  // Keep <html lang> in step with the UI language (screen readers, fonts).
+  useEffect(() => {
+    const previous = document.documentElement.lang
+    document.documentElement.lang = lang
+    return () => {
+      document.documentElement.lang = previous
+    }
+  }, [lang])
   const [step, setStep] = useState(0)
   const [form, setForm] = useState<FormData>(initialForm)
   const [student, setStudent] = useState<StudentProfileData | null>(null)
@@ -243,21 +260,21 @@ function App() {
 
     if (currentStep === 0) {
       if (!form.full_name.trim()) {
-        errors.full_name = 'Full name is required.'
+        errors.full_name = 'errFullNameRequired'
       }
 
       if (!form.email.trim()) {
-        errors.email = 'Email address is required.'
+        errors.email = 'errEmailRequired'
       } else if (
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
       ) {
-        errors.email = 'Please enter a valid email address.'
+        errors.email = 'errEmailInvalid'
       }
     }
 
     if (currentStep === 1) {
       if (!form.education_level.trim()) {
-        errors.education_level = 'Highest education level is required.'
+        errors.education_level = 'errEducationRequired'
       }
     }
 
@@ -271,19 +288,19 @@ function App() {
     const errors: FieldErrors = {}
 
     if (!form.full_name.trim()) {
-      errors.full_name = 'Full name is required.'
+      errors.full_name = 'errFullNameRequired'
     }
 
     if (!form.email.trim()) {
-      errors.email = 'Email address is required.'
+      errors.email = 'errEmailRequired'
     } else if (
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
     ) {
-      errors.email = 'Please enter a valid email address.'
+      errors.email = 'errEmailInvalid'
     }
 
     if (!form.education_level.trim()) {
-      errors.education_level = 'Highest education level is required.'
+      errors.education_level = 'errEducationRequired'
     }
 
     setFieldErrors(errors)
@@ -496,6 +513,8 @@ function App() {
       initial={initial}
       activeNav={activeNav}
       onSelectNav={(navId) => setActiveNav(navId)}
+      lang={lang}
+      onChangeLang={changeLang}
     >
       <main className="content">
         {error && (
@@ -532,22 +551,23 @@ function App() {
           <>
             <section className="hero">
               <div className="hero-copy">
-                <span className="eyebrow">YOUR STARTING POINT</span>
+                <span className="eyebrow">{t('heroEyebrow')}</span>
 
                 <h1>
-                  Let&apos;s build your <em>path forward.</em>
+                  {t('heroTitleA')}
+                  <em>{t('heroTitleB')}</em>
                 </h1>
 
-                <p>
-                  A few details help us recommend careers, learning resources
-                  and opportunities that fit you.
-                </p>
+                <p>{t('heroText')}</p>
 
                 {student && (
                   <div style={{ marginTop: '16px' }}>
                     <span className="student-badge-pill">
-                      <Check size={14} /> Active Profile: {student.full_name}{' '}
-                      ({student.state})
+                      <Check size={14} />{' '}
+                      {t('activeProfile', {
+                        name: optionLabel(lang, student.full_name),
+                        state: optionLabel(lang, student.state),
+                      })}
                     </span>
                   </div>
                 )}
@@ -560,12 +580,12 @@ function App() {
               <div className="content-col">
                 <section
                   className="stepper-card"
-                  aria-label="Profile progress"
+                  aria-label={t('ariaProfileProgress')}
                 >
                   <ol className="stepper">
                     {steps.map((item, index) => (
                       <li
-                        key={item.title}
+                        key={item.titleKey}
                         className={`stepper-item ${
                           index === step ? 'active' : ''
                         } ${index < step ? 'completed' : ''}`}
@@ -582,14 +602,17 @@ function App() {
                         </span>
 
                         <span className="stepper-label">
-                          {item.title}
+                          {t(item.titleKey)}
                         </span>
                       </li>
                     ))}
                   </ol>
 
                   <span className="stepper-count">
-                    Step {step + 1} of {steps.length}
+                    {tParts(lang, 'stepCount', {
+                      step: step + 1,
+                      total: steps.length,
+                    })}
                   </span>
                 </section>
 
@@ -600,8 +623,8 @@ function App() {
                     </div>
 
                     <div>
-                      <h2>{steps[step].title}</h2>
-                      <p>{steps[step].subtitle}</p>
+                      <h2>{t(steps[step].titleKey)}</h2>
+                      <p>{t(steps[step].subtitleKey)}</p>
                     </div>
                   </div>
 
@@ -611,11 +634,11 @@ function App() {
                         <Field
                           wide
                           icon={UserRound}
-                          label="Full name"
+                          label={t('fullName')}
                           required
                           value={form.full_name}
-                          placeholder="Enter your full name"
-                          error={fieldErrors.full_name}
+                          placeholder={t('fullNamePlaceholder')}
+                          error={fieldErrors.full_name ? t(fieldErrors.full_name) : undefined}
                           onChange={(value) =>
                             updateField('full_name', value)
                           }
@@ -623,12 +646,12 @@ function App() {
 
                         <Field
                           icon={Mail}
-                          label="Email address"
+                          label={t('email')}
                           required
                           type="email"
                           value={form.email}
                           placeholder="you@example.com"
-                          error={fieldErrors.email}
+                          error={fieldErrors.email ? t(fieldErrors.email) : undefined}
                           onChange={(value) =>
                             updateField('email', value)
                           }
@@ -636,7 +659,7 @@ function App() {
 
                         <Field
                           icon={Phone}
-                          label="Phone number"
+                          label={t('phone')}
                           value={form.phone}
                           placeholder="+91 9876543210"
                           onChange={(value) =>
@@ -646,18 +669,19 @@ function App() {
 
                         <Field
                           icon={Calendar}
-                          label="Age"
+                          label={t('age')}
                           type="number"
                           value={form.age}
-                          placeholder="e.g. 19"
+                          placeholder={t('agePlaceholder')}
                           onChange={(value) =>
                             updateField('age', value)
                           }
                         />
 
                         <SelectField
+                          lang={lang}
                           icon={Users}
-                          label="Gender"
+                          label={t('gender')}
                           value={form.gender}
                           options={['Male', 'Female', 'Other']}
                           onChange={(value) =>
@@ -666,39 +690,45 @@ function App() {
                         />
 
                         <Field
+                          lang={lang}
+                          localizeValue
                           icon={MapIcon}
-                          label="State"
+                          label={t('state')}
                           value={form.state}
-                          placeholder="e.g. Uttar Pradesh"
+                          placeholder={t('statePlaceholder')}
                           onChange={(value) =>
                             updateField('state', value)
                           }
                         />
 
                         <Field
+                          lang={lang}
+                          localizeValue
                           icon={MapPin}
-                          label="District"
+                          label={t('district')}
                           value={form.district}
-                          placeholder="Enter your city or district"
+                          placeholder={t('districtPlaceholder')}
                           onChange={(value) =>
                             updateField('district', value)
                           }
                         />
 
                         <SelectField
+                          lang={lang}
                           icon={Building2}
-                          label="Location tier"
+                          label={t('locationTier')}
                           value={form.location_tier}
                           options={['Tier 1', 'Tier 2', 'Tier 3']}
-                          hint="Helps prioritize regional opportunities."
+                          hint={t('locationTierHint')}
                           onChange={(value) =>
                             updateField('location_tier', value)
                           }
                         />
 
                         <SelectField
+                          lang={lang}
                           icon={Tags}
-                          label="Category"
+                          label={t('category')}
                           value={form.category}
                           options={[
                             'General',
@@ -719,8 +749,9 @@ function App() {
                     <div className="form-content">
                       <div className="field-grid">
                         <SelectField
+                          lang={lang}
                           icon={GraduationCap}
-                          label="Highest education level"
+                          label={t('educationLevel')}
                           required
                           value={form.education_level}
                           options={[
@@ -730,15 +761,16 @@ function App() {
                             'Undergraduate',
                             'Postgraduate',
                           ]}
-                          error={fieldErrors.education_level}
+                          error={fieldErrors.education_level ? t(fieldErrors.education_level) : undefined}
                           onChange={(value) =>
                             updateField('education_level', value)
                           }
                         />
 
                         <SelectField
+                          lang={lang}
                           icon={BookOpen}
-                          label="Stream"
+                          label={t('stream')}
                           value={form.stream}
                           options={[
                             'Science PCM',
@@ -755,10 +787,10 @@ function App() {
 
                         <Field
                           icon={Percent}
-                          label="Percentage / marks"
+                          label={t('percentage')}
                           type="number"
                           value={form.percentage_marks}
-                          placeholder="e.g. 78.5"
+                          placeholder={t('percentagePlaceholder')}
                           onChange={(value) =>
                             updateField('percentage_marks', value)
                           }
@@ -769,13 +801,9 @@ function App() {
                         <GraduationCap size={20} />
 
                         <div>
-                          <strong>Why do we ask this?</strong>
+                          <strong>{t('whyAskTitle')}</strong>
 
-                          <p>
-                            Your education level and stream help us identify
-                            careers and government scholarships you qualify
-                            for.
-                          </p>
+                          <p>{t('whyAskText')}</p>
                         </div>
                       </div>
                     </div>
@@ -784,8 +812,9 @@ function App() {
                   {step === 2 && (
                     <div className="form-content">
                       <TagInput
-                        label="Skills"
-                        placeholder="e.g. Python, Excel, Communication"
+                        lang={lang}
+                        label={t('skills')}
+                        placeholder={t('skillsPlaceholder')}
                         values={form.skills}
                         onAdd={(value) =>
                           addTag('skills', value)
@@ -796,8 +825,9 @@ function App() {
                       />
 
                       <TagInput
-                        label="Interests"
-                        placeholder="e.g. Technology, Solar Energy, Healthcare"
+                        lang={lang}
+                        label={t('interests')}
+                        placeholder={t('interestsPlaceholder')}
                         values={form.interests}
                         onAdd={(value) =>
                           addTag('interests', value)
@@ -808,8 +838,9 @@ function App() {
                       />
 
                       <TagInput
-                        label="Languages"
-                        placeholder="e.g. Hindi, English"
+                        lang={lang}
+                        label={t('languages')}
+                        placeholder={t('languagesPlaceholder')}
                         values={form.languages}
                         onAdd={(value) =>
                           addTag('languages', value)
@@ -820,8 +851,9 @@ function App() {
                       />
 
                       <TagInput
-                        label="Career aspirations"
-                        placeholder="e.g. Technician, Analyst, Public Service"
+                        lang={lang}
+                        label={t('aspirations')}
+                        placeholder={t('aspirationsPlaceholder')}
                         values={form.career_aspirations}
                         onAdd={(value) =>
                           addTag('career_aspirations', value)
@@ -837,10 +869,10 @@ function App() {
                     <div className="form-content">
                       <div className="field-grid">
                         <Field
-                          label="Annual family income"
+                          label={t('income')}
                           type="number"
                           value={form.annual_family_income}
-                          placeholder="e.g. 180000"
+                          placeholder={t('incomePlaceholder')}
                           prefix="₹"
                           onChange={(value) =>
                             updateField(
@@ -851,8 +883,9 @@ function App() {
                         />
 
                         <SelectField
+                          lang={lang}
                           icon={Wallet}
-                          label="Financial constraint level"
+                          label={t('financialConstraint')}
                           value={form.financial_constraint}
                           options={['Low', 'Medium', 'High']}
                           onChange={(value) =>
@@ -866,25 +899,18 @@ function App() {
 
                       <div className="income-cards">
                         <div>
-                          <span>LOW</span>
-                          <p>
-                            Financial support is generally available.
-                          </p>
+                          <span>{t('incomeLow')}</span>
+                          <p>{t('incomeLowText')}</p>
                         </div>
 
                         <div>
-                          <span>MEDIUM</span>
-                          <p>
-                            Some financial limitations may affect choices.
-                          </p>
+                          <span>{t('incomeMedium')}</span>
+                          <p>{t('incomeMediumText')}</p>
                         </div>
 
                         <div>
-                          <span>HIGH</span>
-                          <p>
-                            Cost-effective paths and financial aid are
-                            critical.
-                          </p>
+                          <span>{t('incomeHigh')}</span>
+                          <p>{t('incomeHighText')}</p>
                         </div>
                       </div>
 
@@ -892,13 +918,9 @@ function App() {
                         <Wallet size={20} />
 
                         <div>
-                          <strong>Your information matters</strong>
+                          <strong>{t('mattersTitle')}</strong>
 
-                          <p>
-                            UdaanPath prioritizes affordable education,
-                            certified scholarships, and high-ROI career
-                            tracks.
-                          </p>
+                          <p>{t('mattersText')}</p>
                         </div>
                       </div>
                     </div>
@@ -911,7 +933,7 @@ function App() {
                         onClick={previousStep}
                       >
                         <ArrowLeft size={18} />
-                        Back
+                        {t('back')}
                       </button>
                     ) : (
                       <div />
@@ -922,7 +944,7 @@ function App() {
                         className="primary-button"
                         onClick={nextStep}
                       >
-                        Save &amp; Continue
+                        {t('saveContinue')}
                         <ArrowRight size={18} />
                       </button>
                     ) : (
@@ -937,11 +959,11 @@ function App() {
                               size={18}
                               className="animate-spin"
                             />
-                            Saving...
+                            {t('saving')}
                           </>
                         ) : (
                           <>
-                            Complete profile
+                            {t('completeProfile')}
                             <Check size={18} />
                           </>
                         )}
@@ -958,21 +980,20 @@ function App() {
                   <span className="info-rule" />
 
                   <h2>
-                    Every path
+                    {t('infoTitle1')}
                     <br />
-                    starts <em>somewhere</em>
+                    {t('infoTitle2Pre')}
+                    <em>{t('infoTitle2Em')}</em>
+                    {t('infoTitle2Post')}
                   </h2>
 
-                  <p>
-                    Your profile helps us suggest careers, skills, learning
-                    resources and opportunities that match your background.
-                  </p>
+                  <p>{t('infoText')}</p>
                 </div>
 
                 <ul className="info-list">
                   {infoPoints.map(
-                    ({ title, text, icon: Icon }) => (
-                      <li key={title}>
+                    ({ titleKey, textKey, icon: Icon }) => (
+                      <li key={titleKey}>
                         <span className="info-icon">
                           <Icon
                             size={22}
@@ -981,8 +1002,8 @@ function App() {
                         </span>
 
                         <div>
-                          <strong>{title}</strong>
-                          <p>{text}</p>
+                          <strong>{t(titleKey)}</strong>
+                          <p>{t(textKey)}</p>
                         </div>
                       </li>
                     ),
@@ -998,18 +1019,15 @@ function App() {
           <div className="dashboard-container">
             <div className="dashboard-top">
               <div className="dashboard-title">
-                <h2>Personalized Career Recommendations</h2>
+                <h2>{t('careersTitle')}</h2>
 
-                <p>
-                  Multi-factor matched against your academic background,
-                  skills, and financial ROI.
-                </p>
+                <p>{t('careersSubtitle')}</p>
               </div>
 
               {student && (
                 <div className="student-badge-pill">
                   <UserRound size={16} /> {student.full_name} ·{' '}
-                  {student.stream.replace('_', ' ')}
+                  {optionLabel(lang, student.stream)}
                 </div>
               )}
             </div>
@@ -1024,19 +1042,16 @@ function App() {
                   }}
                 />
 
-                <h3>No recommendations generated yet</h3>
+                <h3>{t('careersEmptyTitle')}</h3>
 
-                <p>
-                  Complete your student profile to unlock customized
-                  career matches.
-                </p>
+                <p>{t('careersEmptyText')}</p>
 
                 <button
                   className="primary-button"
                   style={{ marginTop: '16px' }}
                   onClick={() => setActiveNav('profile')}
                 >
-                  Go to Profile Setup
+                  {t('goToProfileSetup')}
                 </button>
               </div>
             ) : (
@@ -1070,13 +1085,15 @@ function App() {
                         </div>
 
                         <span className="score-badge">
-                          {Math.round(career.match_score)}% Match
+                          {t('matchPercent', {
+                            n: Math.round(career.match_score),
+                          })}
                         </span>
                       </div>
 
                       <div className="salary-row">
                         <div className="salary-item">
-                          <span>Starting Salary</span>
+                          <span>{t('startingSalary')}</span>
 
                           <strong>
                             ₹
@@ -1084,12 +1101,12 @@ function App() {
                               career.starting_salary_inr /
                               100000
                             ).toFixed(1)}{' '}
-                            LPA
+                            {t('lpa')}
                           </strong>
                         </div>
 
                         <div className="salary-item">
-                          <span>Mid-Career</span>
+                          <span>{t('midCareer')}</span>
 
                           <strong>
                             ₹
@@ -1097,12 +1114,12 @@ function App() {
                               career.mid_level_salary_inr /
                               100000
                             ).toFixed(1)}{' '}
-                            LPA
+                            {t('lpa')}
                           </strong>
                         </div>
 
                         <div className="salary-item">
-                          <span>Outlook</span>
+                          <span>{t('outlook')}</span>
                           <strong>{career.growth_outlook}</strong>
                         </div>
                       </div>
@@ -1136,7 +1153,7 @@ function App() {
                       }
                     >
                       <BookOpen size={16} />
-                      View Learning Roadmap
+                      {t('viewRoadmap')}
                     </button>
                   </div>
                 ))}
@@ -1152,14 +1169,13 @@ function App() {
               <div className="dashboard-title">
                 <h2>
                   {pathway
-                    ? `${pathway.career_title} Learning Roadmap`
-                    : 'Learning Roadmap'}
+                    ? t('roadmapTitleFor', {
+                        career: pathway.career_title,
+                      })
+                    : t('roadmapTitle')}
                 </h2>
 
-                <p>
-                  4-stage milestone pathway with certified free
-                  SWAYAM/NPTEL alternative resources.
-                </p>
+                <p>{t('roadmapSubtitle')}</p>
               </div>
 
               {pathway && (
@@ -1170,13 +1186,13 @@ function App() {
                   }}
                 >
                   <span className="student-badge-pill">
-                    Duration: ~
-                    {pathway.total_estimated_duration_months}{' '}
-                    Months
+                    {t('duration', {
+                      n: pathway.total_estimated_duration_months,
+                    })}
                   </span>
 
                   <span className="student-badge-pill">
-                    {pathway.weekly_study_hours} hrs / week
+                    {t('hoursPerWeek', { n: pathway.weekly_study_hours })}
                   </span>
                 </div>
               )}
@@ -1193,19 +1209,16 @@ function App() {
                   }}
                 />
 
-                <h3>No roadmap loaded yet</h3>
+                <h3>{t('roadmapEmptyTitle')}</h3>
 
-                <p>
-                  Select a career from Career Discovery to generate a
-                  structured 4-stage roadmap.
-                </p>
+                <p>{t('roadmapEmptyText')}</p>
 
                 <button
                   className="primary-button"
                   style={{ marginTop: '16px' }}
                   onClick={() => setActiveNav('careers')}
                 >
-                  Explore Careers First
+                  {t('exploreCareersFirst')}
                 </button>
               </div>
             ) : (
@@ -1257,8 +1270,8 @@ function App() {
                           }
                         >
                           {milestone.status === 'completed'
-                            ? 'Mark In Progress'
-                            : 'Mark Complete'}
+                            ? t('markInProgress')
+                            : t('markComplete')}
                         </button>
                       </div>
 
@@ -1282,19 +1295,24 @@ function App() {
                         }}
                       >
                         <span>
-                          ⏱️ {milestone.duration_weeks} Weeks
+                          ⏱️{' '}
+                          {t('weeks', { n: milestone.duration_weeks })}
                         </span>
 
                         {milestone.recommended_certification && (
                           <span>
-                            📜 Cert:{' '}
-                            {milestone.recommended_certification}
+                            📜{' '}
+                            {t('cert', {
+                              value: milestone.recommended_certification,
+                            })}
                           </span>
                         )}
 
                         <span>
-                          💰 Est. Cost: ₹
-                          {milestone.estimated_cost_inr}
+                          💰{' '}
+                          {t('estCost', {
+                            n: milestone.estimated_cost_inr,
+                          })}
                         </span>
                       </div>
 
@@ -1316,7 +1334,7 @@ function App() {
                           <span>
                             🎓{' '}
                             <strong>
-                              Free Alternative:
+                              {t('freeAlternative')}
                             </strong>{' '}
                             {
                               milestone.free_alternative_resource
@@ -1333,7 +1351,7 @@ function App() {
                               gap: '4px',
                             }}
                           >
-                            Access Portal{' '}
+                            {t('accessPortal')}{' '}
                             <ExternalLink size={13} />
                           </a>
                         </div>
@@ -1351,19 +1369,13 @@ function App() {
           <div className="dashboard-container">
             <div className="dashboard-top">
               <div className="dashboard-title">
-                <h2>
-                  Verified Opportunities &amp; Scholarships
-                </h2>
+                <h2>{t('oppsTitle')}</h2>
 
-                <p>
-                  Official government welfare schemes, scholarships,
-                  and apprenticeships evaluated with deterministic
-                  rules.
-                </p>
+                <p>{t('oppsSubtitle')}</p>
               </div>
 
               <span className="student-badge-pill">
-                🔒 100% Traceable Indian Schemes
+                🔒 {t('oppsBadge')}
               </span>
             </div>
 
@@ -1377,19 +1389,16 @@ function App() {
                   }}
                 />
 
-                <h3>No opportunities evaluated yet</h3>
+                <h3>{t('oppsEmptyTitle')}</h3>
 
-                <p>
-                  Complete your student profile to evaluate eligibility
-                  across national schemes.
-                </p>
+                <p>{t('oppsEmptyText')}</p>
 
                 <button
                   className="primary-button"
                   style={{ marginTop: '16px' }}
                   onClick={() => setActiveNav('profile')}
                 >
-                  Complete Profile
+                  {t('completeProfileBtn')}
                 </button>
               </div>
             ) : (
@@ -1426,9 +1435,9 @@ function App() {
                           <span
                             className={`eligibility-badge ${statusClass}`}
                           >
-                            {item.eligibility_status.replace(
-                              /_/g,
-                              ' ',
+                            {eligibilityLabel(
+                              lang,
+                              item.eligibility_status,
                             )}
                           </span>
                         </div>
@@ -1441,7 +1450,9 @@ function App() {
                           </strong>
 
                           <span>
-                            Verified by: {opp.verified_by}
+                            {t('verifiedBy', {
+                              value: opp.verified_by,
+                            })}
                           </span>
                         </div>
 
@@ -1461,7 +1472,7 @@ function App() {
                               color: '#063b2e',
                             }}
                           >
-                            Eligibility Evaluation:
+                            {t('eligibilityEvaluation')}
                           </span>
 
                           <ul className="reasons-list">
@@ -1485,7 +1496,7 @@ function App() {
                           gap: '8px',
                         }}
                       >
-                        Apply on Official Portal{' '}
+                        {t('applyOfficial')}{' '}
                         <ExternalLink size={16} />
                       </a>
                     </div>
@@ -1501,19 +1512,13 @@ function App() {
           <div className="dashboard-container">
             <div className="dashboard-top">
               <div className="dashboard-title">
-                <h2>
-                  AI Career &amp; Education Advisor
-                </h2>
+                <h2>{t('advisorTitle')}</h2>
 
-                <p>
-                  Powered by Gemini LLM with zero-failure deterministic
-                  rule fallback. Ask any questions about careers,
-                  schemes, or preparation.
-                </p>
+                <p>{t('advisorSubtitle')}</p>
               </div>
 
               <span className="student-badge-pill">
-                <Sparkles size={16} /> Intelligent Guidance
+                <Sparkles size={16} /> {t('advisorBadge')}
               </span>
             </div>
 
@@ -1525,7 +1530,7 @@ function App() {
                   marginBottom: '8px',
                 }}
               >
-                Ask your question
+                {t('advisorAsk')}
               </h3>
 
               <p
@@ -1534,16 +1539,15 @@ function App() {
                   fontSize: '14px',
                 }}
               >
-                Get tailored advice grounded in official Indian
-                schemes and free educational resources.
+                {t('advisorAskText')}
               </p>
 
               <div className="prompt-chips">
                 {[
-                  'What high-paying vocational careers can I start after 12th?',
-                  'How can I get government funding for my skill development?',
-                  'What are the job prospects and salary for Solar PV Technicians in India?',
-                  'Suggest free online certifications recognized by employers.',
+                  t('advisorPrompt1'),
+                  t('advisorPrompt2'),
+                  t('advisorPrompt3'),
+                  t('advisorPrompt4'),
                 ].map((promptText) => (
                   <button
                     key={promptText}
@@ -1562,7 +1566,7 @@ function App() {
               <div className="advisor-input-row">
                 <input
                   type="text"
-                  placeholder="e.g. Which scholarship is best for girls in engineering with low family income?"
+                  placeholder={t('advisorPlaceholder')}
                   value={advisorQuery}
                   onChange={(e) =>
                     setAdvisorQuery(e.target.value)
@@ -1593,7 +1597,7 @@ function App() {
                   ) : (
                     <>
                       <Sparkles size={18} />
-                      Ask Advisor
+                      {t('advisorButton')}
                     </>
                   )}
                 </button>
@@ -1614,7 +1618,7 @@ function App() {
                         fontSize: '16px',
                       }}
                     >
-                      Advisor Recommendation:
+                      {t('advisorRecommendation')}
                     </strong>
 
                     <span
@@ -1625,7 +1629,9 @@ function App() {
                         fontWeight: 600,
                       }}
                     >
-                      Provider: {advisorResult.provider}
+                      {t('advisorProvider', {
+                        value: advisorResult.provider,
+                      })}
                     </span>
                   </div>
 
@@ -1654,7 +1660,7 @@ function App() {
                             color: '#052e24',
                           }}
                         >
-                          Key Takeaways:
+                          {t('keyTakeaways')}
                         </strong>
 
                         <div
@@ -1689,7 +1695,7 @@ function App() {
                             color: '#052e24',
                           }}
                         >
-                          Action Steps:
+                          {t('actionSteps')}
                         </strong>
 
                         <ul
@@ -1710,12 +1716,45 @@ function App() {
           </div>
         )}
 
+        {/* EDUCATOR PORTAL (placeholder) */}
+        {activeNav === 'educators' && (
+          <div className="dashboard-container">
+            <div className="dashboard-top">
+              <div className="dashboard-title">
+                <h2>{t('educatorsTitle')}</h2>
+
+                <p>{t('educatorsSubtitle')}</p>
+              </div>
+            </div>
+
+            <div className="empty-view">
+              <GraduationCap
+                size={48}
+                style={{
+                  margin: '0 auto 16px',
+                  color: '#16866a',
+                }}
+              />
+
+              <h3>{t('comingSoon')}</h3>
+
+              <p>{t('educatorsText')}</p>
+
+              <button
+                className="primary-button"
+                style={{ marginTop: '16px' }}
+                onClick={() => setActiveNav('profile')}
+              >
+                {t('backToProfile')}
+              </button>
+            </div>
+          </div>
+        )}
+
         <footer className="footer-note">
           <span>UdaanPath</span>
           <span>•</span>
-          <span>
-            Personalized pathways for every student
-          </span>
+          <span>{t('footerTagline')}</span>
         </footer>
       </main>
     </PortalShell>
@@ -1726,13 +1765,19 @@ function PortalShell({
   initial,
   activeNav,
   onSelectNav,
+  lang,
+  onChangeLang,
   children,
 }: {
   initial: string
   activeNav: NavId
   onSelectNav: (id: NavId) => void
+  lang: Lang
+  onChangeLang: (lang: Lang) => void
   children: ReactNode
 }) {
+  const t = (key: MessageKey, vars?: Vars) => translate(lang, key, vars)
+
   return (
     <div className="portal">
       <aside className="side">
@@ -1742,17 +1787,17 @@ function PortalShell({
           <div>
             <span className="brand-name">UdaanPath</span>
             <span className="brand-tag">
-              LEARN · EXPLORE · GROW
+              {t('brandTag')}
             </span>
           </div>
         </div>
 
         <nav
           className="side-nav"
-          aria-label="Student portal"
+          aria-label={t('ariaStudentPortal')}
         >
           {sideNavItems.map(
-            ({ id, label, icon: Icon }) => {
+            ({ id, labelKey, icon: Icon }) => {
               const isActive = activeNav === id
 
               return (
@@ -1772,7 +1817,7 @@ function PortalShell({
                     strokeWidth={1.6}
                   />
 
-                  <span>{label}</span>
+                  <span>{t(labelKey)}</span>
 
                   {isActive && (
                     <ChevronRight
@@ -1794,9 +1839,9 @@ function PortalShell({
 
           <div className="side-card">
             <p>
-              Different backgrounds.
+              {t('sideCardLine1')}
               <br />
-              <strong>Brighter futures.</strong>
+              <strong>{t('sideCardLine2')}</strong>
             </p>
 
             <span className="side-card-arrow">
@@ -1815,21 +1860,23 @@ function PortalShell({
 
           <nav
             className="top-nav"
-            aria-label="Site"
+            aria-label={t('ariaSiteNav')}
           >
-            {topNav.map((label, index) => (
-              <a
-                key={label}
-                className={
-                  index === 0 ? 'active' : ''
-                }
-                aria-current={
-                  index === 0 ? 'page' : undefined
-                }
-              >
-                {label}
-              </a>
-            ))}
+            {topNav.map(({ labelKey, target }) => {
+              const isActive = activeNav === target
+
+              return (
+                <button
+                  key={target}
+                  type="button"
+                  className={isActive ? 'active' : ''}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={() => onSelectNav(target)}
+                >
+                  {t(labelKey)}
+                </button>
+              )
+            })}
           </nav>
 
           <div className="top-tools">
@@ -1838,18 +1885,37 @@ function PortalShell({
 
               <input
                 type="search"
-                placeholder="Search careers, skills, scholarships..."
-                aria-label="Search careers, skills, scholarships"
+                placeholder={t('searchPlaceholder')}
+                aria-label={t('searchAria')}
               />
             </div>
 
             <div
               className="top-lang"
-              aria-label="Language"
+              role="group"
+              aria-label={t('ariaLanguage')}
             >
-              <span className="on">EN</span>
+              <button
+                type="button"
+                className={lang === 'en' ? 'on' : ''}
+                lang="en"
+                aria-label={t('ariaEnglish')}
+                aria-pressed={lang === 'en'}
+                onClick={() => onChangeLang('en')}
+              >
+                English
+              </button>
               <span className="divider" />
-              <span>HI</span>
+              <button
+                type="button"
+                className={lang === 'hi' ? 'on' : ''}
+                lang="hi"
+                aria-label={t('ariaHindi')}
+                aria-pressed={lang === 'hi'}
+                onClick={() => onChangeLang('hi')}
+              >
+                Hindi
+              </button>
             </div>
 
             <div className="top-user">
@@ -1874,6 +1940,7 @@ function PortalShell({
 }
 
 type FieldProps = {
+  lang?: Lang
   label: string
   value: string
   placeholder?: string
@@ -1884,10 +1951,12 @@ type FieldProps = {
   hint?: string
   wide?: boolean
   error?: string
+  localizeValue?: boolean
   onChange: (value: string) => void
 }
 
 function Field({
+  lang = 'en',
   label,
   value,
   placeholder,
@@ -1898,6 +1967,7 @@ function Field({
   hint,
   wide,
   error,
+  localizeValue = false,
   onChange,
 }: FieldProps) {
   return (
@@ -1935,7 +2005,7 @@ function Field({
 
         <input
           type={type}
-          value={value}
+          value={localizeValue ? optionLabel(lang, value) : value}
           placeholder={placeholder}
           aria-required={
             required || undefined
@@ -1944,7 +2014,11 @@ function Field({
             error ? true : undefined
           }
           onChange={(event) =>
-            onChange(event.target.value)
+            onChange(
+              localizeValue
+                ? optionValue(lang, event.target.value)
+                : event.target.value,
+            )
           }
         />
       </div>
@@ -1965,6 +2039,7 @@ function Field({
 }
 
 type SelectProps = {
+  lang: Lang
   label: string
   value: string
   options: string[]
@@ -1976,6 +2051,7 @@ type SelectProps = {
 }
 
 function SelectField({
+  lang,
   label,
   value,
   options,
@@ -2021,7 +2097,9 @@ function SelectField({
           }
         >
           <option value="">
-            Select {label.toLowerCase()}
+            {translate(lang, 'selectPrompt', {
+              label: lang === 'en' ? label.toLowerCase() : label,
+            })}
           </option>
 
           {options.map((option) => (
@@ -2029,7 +2107,7 @@ function SelectField({
               key={option}
               value={option}
             >
-              {option}
+              {optionLabel(lang, option)}
             </option>
           ))}
         </select>
@@ -2056,6 +2134,7 @@ function SelectField({
 }
 
 type TagInputProps = {
+  lang: Lang
   label: string
   placeholder: string
   values: string[]
@@ -2064,6 +2143,7 @@ type TagInputProps = {
 }
 
 function TagInput({
+  lang,
   label,
   placeholder,
   values,
@@ -2103,7 +2183,7 @@ function TagInput({
           onClick={handleAdd}
         >
           <Plus size={18} />
-          Add
+          {translate(lang, 'addTag')}
         </button>
       </div>
 
@@ -2113,10 +2193,13 @@ function TagInput({
             className="tag"
             key={value}
           >
-            {value}
+            {optionLabel(lang, value)}
 
             <button
               type="button"
+              aria-label={translate(lang, 'removeItem', {
+                value: optionLabel(lang, value),
+              })}
               onClick={() =>
                 onRemove(value)
               }

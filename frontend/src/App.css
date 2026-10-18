@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
+
 /* ==========================================================================
    UdaanPath — Student Profile page
    Deep-green portal frame (sidebar + info panel) around a clean central form.
@@ -230,24 +232,32 @@ ol {
   align-self: stretch;
 }
 
-.top-nav a {
+/* Top nav items are real <button>s (keyboard + screen-reader friendly).
+   The resets keep each one in exactly the same box as the old text link. */
+.top-nav button {
   position: relative;
   display: flex;
   align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--ink-soft);
   font-size: 14.5px;
   font-weight: 500;
+  letter-spacing: inherit;
+  text-align: inherit;
   text-decoration: none;
   white-space: nowrap;
-  cursor: default;
+  cursor: pointer;
 }
 
-.top-nav a.active {
+.top-nav button.active {
   color: var(--ink);
   font-weight: 600;
 }
 
-.top-nav a.active::after {
+.top-nav button.active::after {
   position: absolute;
   right: 0;
   bottom: -1px;
@@ -306,8 +316,22 @@ ol {
   font-weight: 600;
 }
 
+/* EN / HI are real <button>s; reset so they look like the old labels. */
+.top-lang button {
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: inherit;
+  letter-spacing: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
 .top-lang .on {
   color: var(--green-800);
+  font-weight: 700;
 }
 
 .top-lang .divider {
@@ -1160,13 +1184,13 @@ ol {
    Responsive
    -------------------------------------------------------------------------- */
 
-@media (max-width: 1320px) {
+@media (max-width: 1400px) {
   .top-search {
     width: 220px;
   }
 
   .top-nav {
-    gap: 24px;
+    gap: 22px;
   }
 }
 
@@ -1805,3 +1829,97 @@ ol {
   box-shadow: 0 0 0 2px rgba(197, 48, 48, 0.08);
 }
 
+
+/* --------------------------------------------------------------------------
+   Hindi (Devanagari) typography
+   Letter-spacing (positive tracking on small caps labels, negative tracking on
+   headings) pulls apart or crushes Devanagari joins and matras, so it is reset
+   for these elements only while the UI language is Hindi. English is untouched.
+   -------------------------------------------------------------------------- */
+
+:lang(hi) .brand-tag,
+:lang(hi) .eyebrow,
+:lang(hi) .hero-copy h1,
+:lang(hi) .form-heading h2,
+:lang(hi) .income-cards span,
+:lang(hi) .info-copy h2,
+:lang(hi) .eligibility-badge {
+  letter-spacing: normal;
+}
+
+:lang(hi) .portal {
+  --font-sans: 'Noto Sans Devanagari', Inter, ui-sans-serif, system-ui,
+    sans-serif;
+}
+
+:lang(hi) .brand-tag,
+:lang(hi) .eyebrow,
+:lang(hi) .income-cards span,
+:lang(hi) .category-tag,
+:lang(hi) .milestone-stage-tag,
+:lang(hi) .eligibility-badge {
+  line-height: 1.35;
+}
+
+:lang(hi) .side-link,
+:lang(hi) .top-nav button,
+:lang(hi) .stepper-item,
+:lang(hi) .field > span,
+:lang(hi) .tag-field > label,
+:lang(hi) .primary-button,
+:lang(hi) .secondary-button,
+:lang(hi) .top-lang,
+:lang(hi) .student-badge-pill {
+  line-height: 1.35;
+}
+
+:lang(hi) .hero-copy h1,
+:lang(hi) .form-heading h2,
+:lang(hi) .info-copy h2,
+:lang(hi) .success-card h1,
+:lang(hi) .dashboard-title h2 {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: normal;
+}
+
+:lang(hi) .hero-copy h1 {
+  font-size: clamp(34px, 3.2vw, 48px);
+  line-height: 1.2;
+}
+
+:lang(hi) .hero-copy p,
+:lang(hi) .form-heading p,
+:lang(hi) .info-copy p,
+:lang(hi) .info-list p,
+:lang(hi) .field-hint,
+:lang(hi) .field-error,
+:lang(hi) .dashboard-title p,
+:lang(hi) .item-card-body,
+:lang(hi) .empty-view p {
+  line-height: 1.5;
+}
+
+:lang(hi) .form-heading h2 {
+  font-size: 29px;
+  line-height: 1.25;
+}
+
+:lang(hi) .info-copy h2 {
+  font-size: 30px;
+  line-height: 1.25;
+}
+
+:lang(hi) .side-card p {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+:lang(hi) .field input,
+:lang(hi) .field select,
+:lang(hi) .tag-input,
+:lang(hi) .tag-input input {
+  font-size: 14px;
+  line-height: 1.45;
+}
