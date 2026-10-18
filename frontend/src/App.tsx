@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   ArrowLeft,
@@ -31,7 +31,7 @@ import {
   X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { HeroScene, LogoMark, SidebarScene, SproutScene } from './ProfileArt'
+import { HeroScene, JourneyScene, LogoMark, SidebarScene } from './ProfileArt'
 import {
   api,
   type StudentProfileData,
@@ -40,19 +40,19 @@ import {
   type PathwayResponse,
   type AiAdvisorResponse,
 } from './api/client'
+import CareerDiscovery from './careers/CareerDiscovery.tsx'
 import {
   eligibilityLabel,
-  optionLabel,
-  optionValue,
   readStoredLang,
   storeLang,
   t as translate,
-  tParts,
   type Lang,
   type MessageKey,
   type Vars,
 } from './i18n'
+import { linkTo, navigate, routes, type Route } from './router.ts'
 import './App.css'
+import './onboarding.css'
 
 type FormData = {
   full_name: string
@@ -78,9 +78,36 @@ type FormData = {
   financial_constraint: string
 }
 
+// The form starts empty so completion and validation reflect what the student
+// actually entered.
 const initialForm: FormData = {
   full_name: '',
   email: '',
+  phone: '',
+  age: '',
+  gender: '',
+  category: '',
+  state: '',
+  district: '',
+  location_tier: '',
+
+  education_level: '',
+  stream: '',
+  percentage_marks: '',
+
+  skills: [],
+  interests: [],
+  languages: [],
+  career_aspirations: [],
+
+  annual_family_income: '',
+  financial_constraint: '',
+}
+
+// Sample values for demos, only applied by the "Fill demo profile" button.
+const DEMO_FORM: FormData = {
+  full_name: 'Aarav Sharma (demo)',
+  email: 'aarav.demo@example.com',
   phone: '',
   age: '19',
   gender: 'Male',
@@ -129,31 +156,210 @@ const sideNavItems: { id: NavId; labelKey: MessageKey; icon: LucideIcon }[] = [
   { id: 'advisor', labelKey: 'sideAdvisor', icon: Brain },
 ]
 
-// The top navigation reuses the same `activeNav` state as the sidebar.
-const topNav: { labelKey: MessageKey; target: NavId }[] = [
-  { labelKey: 'navHome', target: 'profile' },
-  { labelKey: 'navExploreCareers', target: 'careers' },
-  { labelKey: 'navLearningPaths', target: 'pathways' },
-  { labelKey: 'navOpportunities', target: 'opportunities' },
-  { labelKey: 'navForEducators', target: 'educators' },
+/** Each portal view has its own URL so Back/Forward moves between them. */
+const routedViews: Record<NavId, Route> = {
+  profile: routes.onboarding,
+  careers: routes.careers,
+  pathways: routes.roadmap,
+  opportunities: routes.opportunities,
+  advisor: routes.advisor,
+  educators: routes.educators,
+}
+
+/** Portal view each top-bar link opens; Home (no view) is the landing page. */
+const topNav: { labelKey: MessageKey; view?: NavId }[] = [
+  { labelKey: 'navHome' },
+  { labelKey: 'navExploreCareers', view: 'careers' },
+  { labelKey: 'navLearningPaths', view: 'pathways' },
+  { labelKey: 'navOpportunities', view: 'opportunities' },
+  { labelKey: 'navForEducators', view: 'educators' },
 ]
 
-const infoPoints: {
-  titleKey: MessageKey
-  textKey: MessageKey
-  icon: LucideIcon
-}[] = [
-  { titleKey: 'info1Title', textKey: 'info1Text', icon: Compass },
-  { titleKey: 'info2Title', textKey: 'info2Text', icon: BookOpen },
-  { titleKey: 'info3Title', textKey: 'info3Text', icon: BriefcaseBusiness },
+const infoPoints: { title: string; text: string; icon: LucideIcon }[] = [
+  {
+    title: 'Career paths that fit you',
+    text: 'Compare real careers and see how each matches your profile.',
+    icon: Compass,
+  },
+  {
+    title: 'Learning plans you can follow',
+    text: '4-stage roadmaps with free SWAYAM and NPTEL options for a career you pick.',
+    icon: BookOpen,
+  },
+  {
+    title: 'Scholarships worth exploring',
+    text: 'Schemes, scholarships and apprenticeships checked against your profile.',
+    icon: BriefcaseBusiness,
+  },
 ]
 
-// Errors are stored as message keys (not text) so a visible error switches
-// language immediately, without re-running validation.
-type FieldErrors = Partial<Record<keyof FormData, MessageKey>>
+type Errors = Partial<Record<keyof FormData, string>>
 
-function App() {
-  const [activeNav, setActiveNav] = useState<NavId>('profile')
+/** Every profile field, grouped by the step that collects it. */
+const profileFields: { key: keyof FormData; step: number }[] = [
+  { key: 'full_name', step: 0 },
+  { key: 'email', step: 0 },
+  { key: 'phone', step: 0 },
+  { key: 'age', step: 0 },
+  { key: 'gender', step: 0 },
+  { key: 'state', step: 0 },
+  { key: 'district', step: 0 },
+  { key: 'location_tier', step: 0 },
+  { key: 'category', step: 0 },
+  { key: 'education_level', step: 1 },
+  { key: 'stream', step: 1 },
+  { key: 'percentage_marks', step: 1 },
+  { key: 'skills', step: 2 },
+  { key: 'interests', step: 2 },
+  { key: 'languages', step: 2 },
+  { key: 'career_aspirations', step: 2 },
+  { key: 'annual_family_income', step: 3 },
+  { key: 'financial_constraint', step: 3 },
+]
+
+const isFilled = (value: string | string[]) =>
+  Array.isArray(value) ? value.length > 0 : value.trim() !== ''
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/** Checks one step. Required fields must be present; optional numbers and
+ *  contact details only need to be sensible when they are filled in. */
+function validateStep(step: number, form: FormData): Errors {
+  const errors: Errors = {}
+  const need = (key: keyof FormData, message: string) => {
+    if (!String(form[key]).trim()) errors[key] = message
+  }
+  if (step === 0) {
+    if (form.full_name.trim().length < 2) {
+      errors.full_name = 'Please enter your full name.'
+    }
+    if (!form.email.trim()) {
+      errors.email = 'Please enter your email address.'
+    } else if (!EMAIL_RE.test(form.email.trim())) {
+      errors.email = 'Please enter a valid email, like name@example.com.'
+    }
+    if (form.phone.trim() && form.phone.replace(/\D/g, '').length < 10) {
+      errors.phone = 'Phone numbers need at least 10 digits.'
+    }
+    const age = Number(form.age)
+    if (!form.age.trim()) {
+      errors.age = 'Please enter your age.'
+    } else if (!Number.isInteger(age) || age < 12 || age > 60) {
+      errors.age = 'Please enter an age between 12 and 60.'
+    }
+    need('gender', 'Please choose an option.')
+    need('category', 'Please choose your category.')
+    if (form.state.trim().length < 2) errors.state = 'Please enter your state.'
+    if (form.district.trim().length < 2) {
+      errors.district = 'Please enter your district.'
+    }
+  }
+  if (step === 1) {
+    need('education_level', 'Please choose your highest education level.')
+    const marks = Number(form.percentage_marks)
+    if (!form.percentage_marks.trim()) {
+      errors.percentage_marks = 'Please enter your percentage.'
+    } else if (Number.isNaN(marks) || marks < 0 || marks > 100) {
+      errors.percentage_marks = 'Marks should be a percentage from 0 to 100.'
+    }
+  }
+  if (step === 3) {
+    const income = Number(form.annual_family_income)
+    if (!form.annual_family_income.trim()) {
+      errors.annual_family_income = 'Please enter an amount (0 is fine).'
+    } else if (Number.isNaN(income) || income < 0) {
+      errors.annual_family_income = 'Please enter an amount of 0 or more.'
+    }
+  }
+  return errors
+}
+
+/* The draft lives in sessionStorage: it survives moving between pages in
+   this tab, and disappears when the tab closes (safer on shared phones). */
+const DRAFT_KEY = 'udaanpath.profileDraft'
+
+type Draft = { form: FormData; step: number; maxReached: number }
+
+const readDraft = (): Draft | null => {
+  try {
+    const raw = window.sessionStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    const draft = JSON.parse(raw) as Draft
+    return { ...draft, form: { ...initialForm, ...draft.form } }
+  } catch {
+    return null
+  }
+}
+
+const prefersReducedMotion = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const STUDENT_KEY = 'udaanpath.studentId'
+
+// Backend enum values for the form's display options (from origin/main).
+const mapEducationLevel = (val: string): string => {
+  const map: Record<string, string> = {
+    '10th pass': '10th_pass',
+    '12th pass': '12th_pass',
+    Diploma: 'iti_diploma',
+    Undergraduate: 'undergraduate',
+    Postgraduate: 'postgraduate',
+  }
+  return map[val] || '12th_pass'
+}
+
+const mapStream = (val: string): string => {
+  const map: Record<string, string> = {
+    'Science PCM': 'science_pcm',
+    'Science PCB': 'science_pcb',
+    Commerce: 'commerce',
+    'Arts / Humanities': 'arts_humanities',
+    'Computer Science': 'science_pcm',
+    Vocational: 'vocational',
+  }
+  return map[val] || 'general'
+}
+
+const mapGender = (val: string): string =>
+  val === 'Male' ? 'male' : val === 'Female' ? 'female' : 'other'
+
+const mapConstraint = (val: string): string =>
+  val === 'Medium' ? 'moderate' : val.toLowerCase()
+
+/** Builds the API payload from what the student entered. Optional fields the
+ *  student skipped are left out so the backend applies its own defaults. */
+const toPayload = (form: FormData): StudentProfileData => ({
+  full_name: form.full_name.trim(),
+  email: form.email.trim(),
+  phone: form.phone.trim() || undefined,
+  age: parseInt(form.age, 10),
+  gender: mapGender(form.gender),
+  category: form.category,
+  state: form.state.trim(),
+  district: form.district.trim(),
+  location_tier: form.location_tier
+    ? form.location_tier.toLowerCase().replace(' ', '_')
+    : undefined,
+  annual_family_income: parseFloat(form.annual_family_income),
+  financial_constraint: form.financial_constraint
+    ? mapConstraint(form.financial_constraint)
+    : undefined,
+  education_level: mapEducationLevel(form.education_level),
+  stream: form.stream ? mapStream(form.stream) : undefined,
+  percentage_marks: parseFloat(form.percentage_marks),
+  skills: form.skills,
+  interests: form.interests,
+  languages: form.languages,
+  career_aspirations: form.career_aspirations,
+})
+
+function App({ route }: { route: Route }) {
+  const [draft] = useState(readDraft)
+  const [step, setStep] = useState(draft?.step ?? 0)
+  const [maxReached, setMaxReached] = useState(draft?.maxReached ?? 0)
+  const [form, setForm] = useState<FormData>(draft?.form ?? initialForm)
+  const [errors, setErrors] = useState<Errors>({})
+  const [demoFilled, setDemoFilled] = useState(false)
   const [lang, setLang] = useState<Lang>(readStoredLang)
   const t = (key: MessageKey, vars?: Vars) => translate(lang, key, vars)
 
@@ -170,66 +376,141 @@ function App() {
       document.documentElement.lang = previous
     }
   }, [lang])
-  const [step, setStep] = useState(0)
-  const [form, setForm] = useState<FormData>(initialForm)
+
+  // Backend-connected state (from origin/main)
   const [student, setStudent] = useState<StudentProfileData | null>(null)
   const [careers, setCareers] = useState<CareerItem[]>([])
   const [opportunities, setOpportunities] = useState<OpportunityMatchItem[]>([])
   const [pathway, setPathway] = useState<PathwayResponse | null>(null)
   const [selectedCareerId, setSelectedCareerId] = useState<number | null>(null)
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
   // AI Advisor state
   const [advisorQuery, setAdvisorQuery] = useState('')
   const [advisorLoading, setAdvisorLoading] = useState(false)
-  const [advisorResult, setAdvisorResult] = useState<AiAdvisorResponse | null>(null)
+  const [advisorResult, setAdvisorResult] = useState<AiAdvisorResponse | null>(
+    null,
+  )
 
-  // Try to load initial profile if exists (e.g. sample seeded profile)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  // Field to focus once the errors have rendered (set when validation fails).
+  const pendingFocus = useRef<keyof FormData | null>(null)
+
+  const activeNav: NavId =
+    (Object.keys(routedViews) as NavId[]).find(
+      (id) => routedViews[id] === route,
+    ) ?? 'profile'
+  const shownView = useRef(`${step}-${activeNav}`)
+
+  const selectNav = (id: NavId) => navigate(routedViews[id])
+
+  // Loads a student's recommendations, opportunities and first roadmap.
+  const loadStudentData = async (id: number) => {
+    const [recs, opps] = await Promise.all([
+      api.getRecommendations(id, 6),
+      api.matchOpportunities(id, 6),
+    ])
+    setCareers(recs.recommendations || [])
+    setOpportunities(opps.opportunities || [])
+    if (recs.recommendations.length > 0) {
+      const topCareer = recs.recommendations[0]
+      setSelectedCareerId(topCareer.career_id)
+      const p = await api.generatePathway(id, topCareer.career_id)
+      setPathway(p)
+    }
+  }
+
+  // Restores the profile this tab submitted earlier (no demo auto-load).
   useEffect(() => {
-    const fetchDemo = async () => {
+    let raw: string | null
+    try {
+      raw = window.sessionStorage.getItem(STUDENT_KEY)
+    } catch {
+      return
+    }
+    const id = Number(raw)
+    if (!raw || !id) return
+    const restore = async () => {
       try {
-        const demoStudent = await api.getProfile(1)
-        if (demoStudent && demoStudent.id) {
-          setStudent(demoStudent)
-          const [recRes, oppRes] = await Promise.all([
-            api.getRecommendations(demoStudent.id, 6),
-            api.matchOpportunities(demoStudent.id, 6),
-          ])
-          setCareers(recRes.recommendations || [])
-          setOpportunities(oppRes.opportunities || [])
-          if (recRes.recommendations.length > 0) {
-            setSelectedCareerId(recRes.recommendations[0].career_id)
-            const pathRes = await api.generatePathway(
-              demoStudent.id,
-              recRes.recommendations[0].career_id,
-            )
-            setPathway(pathRes)
-          }
-        }
+        const saved = await api.getProfile(id)
+        setStudent(saved)
+        await loadStudentData(id)
       } catch {
-        // Backend not yet running or no profile #1; user will fill form
+        // Backend unavailable or the profile no longer exists.
       }
     }
-    fetchDemo()
+    restore()
   }, [])
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ form, step, maxReached }),
+      )
+    } catch {
+      /* storage unavailable: the form still works for this visit */
+    }
+  }, [form, step, maxReached])
+
+  // After a step change, move focus to the new step's heading. Only scroll if
+  // that heading is actually out of view, so the page never jumps needlessly.
+  useEffect(() => {
+    // Compare with the view last shown (not "first render"), so the double
+    // run of effects in React development mode never moves focus on load.
+    const view = `${step}-${activeNav}`
+    if (shownView.current === view) return
+    shownView.current = view
+    if (activeNav !== 'profile') return
+    const heading = headingRef.current
+    if (!heading) return
+    heading.focus({ preventScroll: true })
+    const top = heading.getBoundingClientRect().top
+    if (top < 0 || top > window.innerHeight * 0.6) {
+      heading.scrollIntoView({
+        block: 'center',
+        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      })
+    }
+  }, [step, activeNav])
+
+  // Runs after React has rendered the step that holds the field, so it
+  // works even when validation sent the student back to an earlier step.
+  useEffect(() => {
+    const key = pendingFocus.current
+    if (!key) return
+    pendingFocus.current = null
+    document.getElementById(`field-${key}`)?.focus()
+  }, [errors, step])
+
+  const completion = useMemo(() => {
+    const filled = profileFields.filter((f) => isFilled(form[f.key]))
+    return {
+      filled: filled.length,
+      total: profileFields.length,
+      percent: Math.round((filled.length / profileFields.length) * 100),
+      perStep: steps.map((_, i) => ({
+        filled: filled.filter((f) => f.step === i).length,
+        total: profileFields.filter((f) => f.step === i).length,
+      })),
+    }
+  }, [form])
+
+  const clearError = (field: keyof FormData) =>
+    setErrors((current) => {
+      if (!current[field]) return current
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
 
   const updateField = (field: keyof FormData, value: string) => {
     setForm((current) => ({
       ...current,
       [field]: value,
     }))
-
-    // Remove the error for this field as soon as the user starts fixing it.
-    setFieldErrors((current) => {
-      if (!current[field]) return current
-
-      const updated = { ...current }
-      delete updated[field]
-      return updated
-    })
+    clearError(field)
   }
 
   const addTag = (
@@ -237,7 +518,9 @@ function App() {
     value: string,
   ) => {
     const cleaned = value.trim()
+
     if (!cleaned || form[field].includes(cleaned)) return
+
     setForm((current) => ({
       ...current,
       [field]: [...current[field], cleaned],
@@ -254,180 +537,74 @@ function App() {
     }))
   }
 
-  // Validate only the fields required for the current step.
-  const validateStep = (currentStep: number): boolean => {
-    const errors: FieldErrors = {}
-
-    if (currentStep === 0) {
-      if (!form.full_name.trim()) {
-        errors.full_name = 'errFullNameRequired'
-      }
-
-      if (!form.email.trim()) {
-        errors.email = 'errEmailRequired'
-      } else if (
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
-      ) {
-        errors.email = 'errEmailInvalid'
-      }
-    }
-
-    if (currentStep === 1) {
-      if (!form.education_level.trim()) {
-        errors.education_level = 'errEducationRequired'
-      }
-    }
-
-    setFieldErrors(errors)
-
-    return Object.keys(errors).length === 0
+  const fillDemo = () => {
+    setForm(DEMO_FORM)
+    setErrors({})
+    setDemoFilled(true)
   }
 
-  // Validate all required fields before final submission.
-  const validateAllFields = (): boolean => {
-    const errors: FieldErrors = {}
+  /** Shows the errors and moves focus to the first problem field. */
+  const reportErrors = (found: Errors) => {
+    pendingFocus.current = profileFields.find((f) => found[f.key])?.key ?? null
+    setErrors(found)
+  }
 
-    if (!form.full_name.trim()) {
-      errors.full_name = 'errFullNameRequired'
-    }
-
-    if (!form.email.trim()) {
-      errors.email = 'errEmailRequired'
-    } else if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
-    ) {
-      errors.email = 'errEmailInvalid'
-    }
-
-    if (!form.education_level.trim()) {
-      errors.education_level = 'errEducationRequired'
-    }
-
-    setFieldErrors(errors)
-
-    return Object.keys(errors).length === 0
+  const goToStep = (index: number) => {
+    if (index === step || index > maxReached) return
+    setErrors({})
+    setStep(index)
   }
 
   const nextStep = () => {
-    if (!validateStep(step)) {
+    const found = validateStep(step, form)
+    if (Object.keys(found).length > 0) {
+      reportErrors(found)
       return
     }
-
     if (step < steps.length - 1) {
-      setStep((current) => current + 1)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setErrors({})
+      setStep(step + 1)
+      setMaxReached((current) => Math.max(current, step + 1))
     }
   }
 
   const previousStep = () => {
     if (step > 0) {
-      setFieldErrors({})
-      setStep((current) => current - 1)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setErrors({})
+      setStep(step - 1)
     }
-  }
-
-  const mapEducationLevel = (val: string): string => {
-    const map: Record<string, string> = {
-      '10th pass': '10th_pass',
-      '12th pass': '12th_pass',
-      Diploma: 'iti_diploma',
-      Undergraduate: 'undergraduate',
-      Postgraduate: 'postgraduate',
-    }
-    return map[val] || '12th_pass'
-  }
-
-  const mapStream = (val: string): string => {
-    const map: Record<string, string> = {
-      'Science PCM': 'science_pcm',
-      'Science PCB': 'science_pcb',
-      Commerce: 'commerce',
-      'Arts / Humanities': 'arts_humanities',
-      'Computer Science': 'science_pcm',
-      Vocational: 'vocational',
-    }
-    return map[val] || 'general'
   }
 
   const handleSubmit = async () => {
-    // Do not submit anything if required fields are missing.
-    if (!validateAllFields()) {
-      setStep(0)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
+    // Re-check every step; if an earlier one has a problem, take them there.
+    for (let i = 0; i < steps.length; i += 1) {
+      const found = validateStep(i, form)
+      if (Object.keys(found).length > 0) {
+        setStep(i)
+        reportErrors(found)
+        return
+      }
     }
 
     setLoading(true)
     setError(null)
-
-    const payload: StudentProfileData = {
-      full_name: form.full_name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim() || undefined,
-      age: parseInt(form.age, 10) || 19,
-      gender:
-        form.gender.toLowerCase() === 'female' ? 'female' : 'male',
-      category: ['General', 'OBC', 'SC', 'ST', 'EWS'].includes(form.category)
-        ? form.category
-        : 'General',
-      state: form.state.trim() || 'Uttar Pradesh',
-      district: form.district.trim() || 'Varanasi',
-      location_tier:
-        form.location_tier.toLowerCase().replace(' ', '_') || 'tier_2',
-      annual_family_income:
-        parseFloat(form.annual_family_income) || 180000,
-      financial_constraint:
-        form.financial_constraint.toLowerCase() === 'medium'
-          ? 'moderate'
-          : form.financial_constraint.toLowerCase() || 'moderate',
-      education_level: mapEducationLevel(form.education_level),
-      stream: mapStream(form.stream),
-      percentage_marks: parseFloat(form.percentage_marks) || 75.0,
-      skills:
-        form.skills.length > 0 ? form.skills : ['Basic Computers'],
-      interests:
-        form.interests.length > 0 ? form.interests : ['Technology'],
-      languages:
-        form.languages.length > 0 ? form.languages : ['Hindi', 'English'],
-      career_aspirations:
-        form.career_aspirations.length > 0
-          ? form.career_aspirations
-          : ['Specialist'],
-    }
+    setErrors({})
 
     try {
-      const created = await api.createProfile(payload)
+      const created = await api.createProfile(toPayload(form))
       setStudent(created)
-
-      // Fetch personalized recommendations & opportunities
       if (created.id) {
-        const [recs, opps] = await Promise.all([
-          api.getRecommendations(created.id, 6),
-          api.matchOpportunities(created.id, 6),
-        ])
-
-        setCareers(recs.recommendations || [])
-        setOpportunities(opps.opportunities || [])
-
-        if (recs.recommendations.length > 0) {
-          const topCareer = recs.recommendations[0]
-          setSelectedCareerId(topCareer.career_id)
-
-          const p = await api.generatePathway(
-            created.id,
-            topCareer.career_id,
-          )
-
-          setPathway(p)
+        try {
+          window.sessionStorage.setItem(STUDENT_KEY, String(created.id))
+        } catch {
+          /* storage unavailable: the profile stays loaded for this visit */
         }
+        await loadStudentData(created.id)
       }
-
-      setActiveNav('careers')
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setDemoFilled(false)
+      selectNav('careers')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setError(msg)
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
     }
@@ -435,17 +612,12 @@ function App() {
 
   const handleSelectCareerForRoadmap = async (careerId: number) => {
     if (!student?.id) return
-
     setLoading(true)
-
     try {
       setSelectedCareerId(careerId)
-
       const p = await api.generatePathway(student.id, careerId)
-
       setPathway(p)
-      setActiveNav('pathways')
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      selectNav('pathways')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -459,20 +631,13 @@ function App() {
   ) => {
     const newStatus =
       currentStatus === 'completed' ? 'in_progress' : 'completed'
-
     try {
-      const updated = await api.updateMilestoneStatus(
-        milestoneId,
-        newStatus,
-      )
-
+      const updated = await api.updateMilestoneStatus(milestoneId, newStatus)
       if (pathway) {
         setPathway({
           ...pathway,
           milestones: pathway.milestones.map((m) =>
-            m.id === milestoneId
-              ? { ...m, status: updated.status }
-              : m,
+            m.id === milestoneId ? { ...m, status: updated.status } : m,
           ),
         })
       }
@@ -483,10 +648,8 @@ function App() {
 
   const handleAskAdvisor = async (queryText: string) => {
     if (!student?.id || !queryText.trim()) return
-
     setAdvisorLoading(true)
     setError(null)
-
     try {
       const res = await api.askAiAdvisor(student.id, queryText)
       setAdvisorResult(res)
@@ -497,48 +660,34 @@ function App() {
     }
   }
 
-  const initial = (
-    student?.full_name ||
-    form.full_name ||
-    'U'
-  )
+  const initial = (student?.full_name || form.full_name || '')
     .trim()
     .charAt(0)
     .toUpperCase()
-
   const CurrentIcon = steps[step].icon
+  const err = (key: keyof FormData) => errors[key]
+  void selectedCareerId
 
   return (
     <PortalShell
       initial={initial}
       activeNav={activeNav}
-      onSelectNav={(navId) => setActiveNav(navId)}
+      onSelectNav={selectNav}
       lang={lang}
       onChangeLang={changeLang}
+      tone={activeNav === 'careers' ? 'dark' : 'light'}
     >
-      <main className="content">
+      <main
+        className={`content ${activeNav === 'profile' ? 'profile-page' : ''} ${
+          activeNav === 'careers' ? 'content--flush' : ''
+        }`}
+      >
         {error && (
-          <div
-            style={{
-              background: '#fde8e8',
-              border: '1px solid #feb2b2',
-              color: '#c53030',
-              padding: '12px 18px',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
+          <div className="api-alert" role="alert">
             <span>{error}</span>
-
             <button
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#c53030',
-              }}
+              type="button"
+              aria-label="Dismiss message"
               onClick={() => setError(null)}
             >
               <X size={16} />
@@ -546,30 +695,23 @@ function App() {
           </div>
         )}
 
-        {/* PROFILE ONBOARDING VIEW */}
         {activeNav === 'profile' && (
           <>
             <section className="hero">
               <div className="hero-copy">
-                <span className="eyebrow">{t('heroEyebrow')}</span>
-
+                <span className="eyebrow">YOUR STARTING POINT</span>
                 <h1>
-                  {t('heroTitleA')}
-                  <em>{t('heroTitleB')}</em>
+                  Let&apos;s build your <em>path forward.</em>
                 </h1>
-
-                <p>{t('heroText')}</p>
-
+                <p>
+                  A few details help us recommend careers, learning resources
+                  and opportunities that fit you.
+                </p>
                 {student && (
-                  <div style={{ marginTop: '16px' }}>
-                    <span className="student-badge-pill">
-                      <Check size={14} />{' '}
-                      {t('activeProfile', {
-                        name: optionLabel(lang, student.full_name),
-                        state: optionLabel(lang, student.state),
-                      })}
-                    </span>
-                  </div>
+                  <p className="student-badge-pill">
+                    <Check size={14} aria-hidden="true" /> Active profile:{' '}
+                    {student.full_name} ({student.state})
+                  </p>
                 )}
               </div>
 
@@ -578,353 +720,335 @@ function App() {
 
             <div className="content-grid">
               <div className="content-col">
+                <JourneyPath
+                  step={step}
+                  maxReached={maxReached}
+                  perStep={completion.perStep}
+                  onGo={goToStep}
+                  onDemo={fillDemo}
+                  lang={lang}
+                />
+
+                {demoFilled && (
+                  <p className="demo-note" role="status">
+                    Demo values are filled in. Replace them with your own
+                    details before you submit.
+                  </p>
+                )}
+
                 <section
-                  className="stepper-card"
-                  aria-label={t('ariaProfileProgress')}
+                  className="form-card"
+                  aria-labelledby="form-step-title"
                 >
-                  <ol className="stepper">
-                    {steps.map((item, index) => (
-                      <li
-                        key={item.titleKey}
-                        className={`stepper-item ${
-                          index === step ? 'active' : ''
-                        } ${index < step ? 'completed' : ''}`}
-                        aria-current={
-                          index === step ? 'step' : undefined
-                        }
-                      >
-                        <span className="stepper-dot">
-                          {index < step ? (
-                            <Check size={16} />
-                          ) : (
-                            index + 1
-                          )}
-                        </span>
-
-                        <span className="stepper-label">
-                          {t(item.titleKey)}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-
-                  <span className="stepper-count">
-                    {tParts(lang, 'stepCount', {
-                      step: step + 1,
-                      total: steps.length,
-                    })}
-                  </span>
-                </section>
-
-                <section className="form-card">
                   <div className="form-heading">
                     <div className="heading-icon">
                       <CurrentIcon size={24} />
                     </div>
 
                     <div>
-                      <h2>{t(steps[step].titleKey)}</h2>
+                      <h2 id="form-step-title" ref={headingRef} tabIndex={-1}>
+                        {t(steps[step].titleKey)}
+                      </h2>
                       <p>{t(steps[step].subtitleKey)}</p>
                     </div>
                   </div>
 
-                  {step === 0 && (
-                    <div className="form-content">
-                      <div className="field-grid">
-                        <Field
-                          wide
-                          icon={UserRound}
-                          label={t('fullName')}
-                          required
-                          value={form.full_name}
-                          placeholder={t('fullNamePlaceholder')}
-                          error={fieldErrors.full_name ? t(fieldErrors.full_name) : undefined}
-                          onChange={(value) =>
-                            updateField('full_name', value)
-                          }
-                        />
-
-                        <Field
-                          icon={Mail}
-                          label={t('email')}
-                          required
-                          type="email"
-                          value={form.email}
-                          placeholder="you@example.com"
-                          error={fieldErrors.email ? t(fieldErrors.email) : undefined}
-                          onChange={(value) =>
-                            updateField('email', value)
-                          }
-                        />
-
-                        <Field
-                          icon={Phone}
-                          label={t('phone')}
-                          value={form.phone}
-                          placeholder="+91 9876543210"
-                          onChange={(value) =>
-                            updateField('phone', value)
-                          }
-                        />
-
-                        <Field
-                          icon={Calendar}
-                          label={t('age')}
-                          type="number"
-                          value={form.age}
-                          placeholder={t('agePlaceholder')}
-                          onChange={(value) =>
-                            updateField('age', value)
-                          }
-                        />
-
-                        <SelectField
-                          lang={lang}
-                          icon={Users}
-                          label={t('gender')}
-                          value={form.gender}
-                          options={['Male', 'Female', 'Other']}
-                          onChange={(value) =>
-                            updateField('gender', value)
-                          }
-                        />
-
-                        <Field
-                          lang={lang}
-                          localizeValue
-                          icon={MapIcon}
-                          label={t('state')}
-                          value={form.state}
-                          placeholder={t('statePlaceholder')}
-                          onChange={(value) =>
-                            updateField('state', value)
-                          }
-                        />
-
-                        <Field
-                          lang={lang}
-                          localizeValue
-                          icon={MapPin}
-                          label={t('district')}
-                          value={form.district}
-                          placeholder={t('districtPlaceholder')}
-                          onChange={(value) =>
-                            updateField('district', value)
-                          }
-                        />
-
-                        <SelectField
-                          lang={lang}
-                          icon={Building2}
-                          label={t('locationTier')}
-                          value={form.location_tier}
-                          options={['Tier 1', 'Tier 2', 'Tier 3']}
-                          hint={t('locationTierHint')}
-                          onChange={(value) =>
-                            updateField('location_tier', value)
-                          }
-                        />
-
-                        <SelectField
-                          lang={lang}
-                          icon={Tags}
-                          label={t('category')}
-                          value={form.category}
-                          options={[
-                            'General',
-                            'OBC',
-                            'SC',
-                            'ST',
-                            'EWS',
-                          ]}
-                          onChange={(value) =>
-                            updateField('category', value)
-                          }
-                        />
-                      </div>
-                    </div>
+                  {Object.keys(errors).length > 0 && (
+                    <p className="form-alert" role="alert">
+                      Please check the highlighted{' '}
+                      {Object.keys(errors).length === 1 ? 'field' : 'fields'}{' '}
+                      below.
+                    </p>
                   )}
 
-                  {step === 1 && (
-                    <div className="form-content">
-                      <div className="field-grid">
-                        <SelectField
-                          lang={lang}
-                          icon={GraduationCap}
-                          label={t('educationLevel')}
-                          required
-                          value={form.education_level}
-                          options={[
-                            '10th pass',
-                            '12th pass',
-                            'Diploma',
-                            'Undergraduate',
-                            'Postgraduate',
-                          ]}
-                          error={fieldErrors.education_level ? t(fieldErrors.education_level) : undefined}
-                          onChange={(value) =>
-                            updateField('education_level', value)
-                          }
+                  <div className="step-body" key={step}>
+                    {step === 0 && (
+                      <div className="form-content">
+                        <div className="field-grid">
+                          <Field
+                            wide
+                            id="field-full_name"
+                            icon={UserRound}
+                            label="Full name"
+                            required
+                            value={form.full_name}
+                            placeholder="Enter your full name"
+                            error={err('full_name')}
+                            onChange={(value) =>
+                              updateField('full_name', value)
+                            }
+                          />
+
+                          <Field
+                            id="field-email"
+                            icon={Mail}
+                            label="Email address"
+                            required
+                            type="email"
+                            value={form.email}
+                            placeholder="you@example.com"
+                            error={err('email')}
+                            onChange={(value) => updateField('email', value)}
+                          />
+
+                          <Field
+                            id="field-phone"
+                            icon={Phone}
+                            label="Phone number"
+                            type="tel"
+                            value={form.phone}
+                            placeholder="+91 9876543210"
+                            error={err('phone')}
+                            onChange={(value) => updateField('phone', value)}
+                          />
+
+                          <Field
+                            id="field-age"
+                            required
+                            icon={Calendar}
+                            label="Age"
+                            type="number"
+                            value={form.age}
+                            placeholder="e.g. 19"
+                            error={err('age')}
+                            onChange={(value) => updateField('age', value)}
+                          />
+
+                          <SelectField
+                            id="field-gender"
+                            required
+                            error={err('gender')}
+                            icon={Users}
+                            label="Gender"
+                            value={form.gender}
+                            options={[
+                              'Male',
+                              'Female',
+                              'Other',
+                              'Prefer not to say',
+                            ]}
+                            onChange={(value) => updateField('gender', value)}
+                          />
+
+                          <Field
+                            id="field-state"
+                            required
+                            error={err('state')}
+                            icon={MapIcon}
+                            label="State"
+                            value={form.state}
+                            placeholder="e.g. Uttar Pradesh"
+                            onChange={(value) => updateField('state', value)}
+                          />
+
+                          <Field
+                            id="field-district"
+                            required
+                            error={err('district')}
+                            icon={MapPin}
+                            label="District"
+                            value={form.district}
+                            placeholder="Enter your city, town or district"
+                            onChange={(value) => updateField('district', value)}
+                          />
+
+                          <SelectField
+                            id="field-location_tier"
+                            icon={Building2}
+                            label="Location tier"
+                            value={form.location_tier}
+                            options={['Tier 1', 'Tier 2', 'Tier 3']}
+                            hint="This helps us show you relevant opportunities in your area."
+                            onChange={(value) =>
+                              updateField('location_tier', value)
+                            }
+                          />
+
+                          <SelectField
+                            id="field-category"
+                            required
+                            error={err('category')}
+                            icon={Tags}
+                            label="Category"
+                            value={form.category}
+                            options={['General', 'OBC', 'SC', 'ST', 'EWS']}
+                            onChange={(value) => updateField('category', value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {step === 1 && (
+                      <div className="form-content">
+                        <div className="field-grid">
+                          <SelectField
+                            id="field-education_level"
+                            icon={GraduationCap}
+                            label="Highest education level"
+                            required
+                            value={form.education_level}
+                            options={[
+                              '10th pass',
+                              '12th pass',
+                              'Diploma',
+                              'Undergraduate',
+                              'Postgraduate',
+                            ]}
+                            error={err('education_level')}
+                            onChange={(value) =>
+                              updateField('education_level', value)
+                            }
+                          />
+
+                          <SelectField
+                            id="field-stream"
+                            icon={BookOpen}
+                            label="Stream"
+                            value={form.stream}
+                            options={[
+                              'Science PCM',
+                              'Science PCB',
+                              'Commerce',
+                              'Arts / Humanities',
+                              'Computer Science',
+                              'Vocational',
+                              'Other',
+                            ]}
+                            onChange={(value) => updateField('stream', value)}
+                          />
+
+                          <Field
+                            id="field-percentage_marks"
+                            required
+                            icon={Percent}
+                            label="Percentage / marks"
+                            type="number"
+                            value={form.percentage_marks}
+                            placeholder="e.g. 78.5"
+                            error={err('percentage_marks')}
+                            onChange={(value) =>
+                              updateField('percentage_marks', value)
+                            }
+                          />
+                        </div>
+
+                        <div className="info-box">
+                          <GraduationCap size={20} />
+                          <div>
+                            <strong>Why do we ask this?</strong>
+                            <p>
+                              Your education level and stream help us identify
+                              careers and opportunities that match your
+                              eligibility.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {step === 2 && (
+                      <div className="form-content">
+                        <TagInput
+                          label="Skills"
+                          placeholder="e.g. Python, Excel, Communication"
+                          values={form.skills}
+                          onAdd={(value) => addTag('skills', value)}
+                          onRemove={(value) => removeTag('skills', value)}
                         />
 
-                        <SelectField
-                          lang={lang}
-                          icon={BookOpen}
-                          label={t('stream')}
-                          value={form.stream}
-                          options={[
-                            'Science PCM',
-                            'Science PCB',
-                            'Commerce',
-                            'Arts / Humanities',
-                            'Computer Science',
-                            'Vocational',
-                          ]}
-                          onChange={(value) =>
-                            updateField('stream', value)
-                          }
+                        <TagInput
+                          label="Interests"
+                          placeholder="e.g. Technology, Solar Energy, Finance"
+                          values={form.interests}
+                          onAdd={(value) => addTag('interests', value)}
+                          onRemove={(value) => removeTag('interests', value)}
                         />
 
-                        <Field
-                          icon={Percent}
-                          label={t('percentage')}
-                          type="number"
-                          value={form.percentage_marks}
-                          placeholder={t('percentagePlaceholder')}
-                          onChange={(value) =>
-                            updateField('percentage_marks', value)
+                        <TagInput
+                          label="Languages"
+                          placeholder="e.g. Hindi, English"
+                          values={form.languages}
+                          onAdd={(value) => addTag('languages', value)}
+                          onRemove={(value) => removeTag('languages', value)}
+                        />
+
+                        <TagInput
+                          label="Career aspirations"
+                          placeholder="e.g. Data Analyst, Software Engineer"
+                          values={form.career_aspirations}
+                          onAdd={(value) => addTag('career_aspirations', value)}
+                          onRemove={(value) =>
+                            removeTag('career_aspirations', value)
                           }
                         />
                       </div>
+                    )}
 
-                      <div className="info-box">
-                        <GraduationCap size={20} />
+                    {step === 3 && (
+                      <div className="form-content">
+                        <div className="field-grid">
+                          <Field
+                            id="field-annual_family_income"
+                            required
+                            label="Annual family income"
+                            type="number"
+                            value={form.annual_family_income}
+                            placeholder="e.g. 180000"
+                            prefix="₹"
+                            error={err('annual_family_income')}
+                            onChange={(value) =>
+                              updateField('annual_family_income', value)
+                            }
+                          />
 
-                        <div>
-                          <strong>{t('whyAskTitle')}</strong>
+                          <SelectField
+                            id="field-financial_constraint"
+                            icon={Wallet}
+                            label="Financial constraint level"
+                            value={form.financial_constraint}
+                            options={['Low', 'Medium', 'High']}
+                            onChange={(value) =>
+                              updateField('financial_constraint', value)
+                            }
+                          />
+                        </div>
 
-                          <p>{t('whyAskText')}</p>
+                        <div className="income-cards">
+                          <div>
+                            <span>LOW</span>
+                            <p>Financial support is generally available.</p>
+                          </div>
+
+                          <div>
+                            <span>MEDIUM</span>
+                            <p>
+                              Some financial limitations may affect choices.
+                            </p>
+                          </div>
+
+                          <div>
+                            <span>HIGH</span>
+                            <p>
+                              Cost-effective paths and financial aid are
+                              important.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="info-box">
+                          <Wallet size={20} />
+                          <div>
+                            <strong>Your information matters</strong>
+                            <p>
+                              This information helps UdaanPath prioritize
+                              affordable education, scholarships, schemes and
+                              low-barrier career paths.
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-
-                  {step === 2 && (
-                    <div className="form-content">
-                      <TagInput
-                        lang={lang}
-                        label={t('skills')}
-                        placeholder={t('skillsPlaceholder')}
-                        values={form.skills}
-                        onAdd={(value) =>
-                          addTag('skills', value)
-                        }
-                        onRemove={(value) =>
-                          removeTag('skills', value)
-                        }
-                      />
-
-                      <TagInput
-                        lang={lang}
-                        label={t('interests')}
-                        placeholder={t('interestsPlaceholder')}
-                        values={form.interests}
-                        onAdd={(value) =>
-                          addTag('interests', value)
-                        }
-                        onRemove={(value) =>
-                          removeTag('interests', value)
-                        }
-                      />
-
-                      <TagInput
-                        lang={lang}
-                        label={t('languages')}
-                        placeholder={t('languagesPlaceholder')}
-                        values={form.languages}
-                        onAdd={(value) =>
-                          addTag('languages', value)
-                        }
-                        onRemove={(value) =>
-                          removeTag('languages', value)
-                        }
-                      />
-
-                      <TagInput
-                        lang={lang}
-                        label={t('aspirations')}
-                        placeholder={t('aspirationsPlaceholder')}
-                        values={form.career_aspirations}
-                        onAdd={(value) =>
-                          addTag('career_aspirations', value)
-                        }
-                        onRemove={(value) =>
-                          removeTag('career_aspirations', value)
-                        }
-                      />
-                    </div>
-                  )}
-
-                  {step === 3 && (
-                    <div className="form-content">
-                      <div className="field-grid">
-                        <Field
-                          label={t('income')}
-                          type="number"
-                          value={form.annual_family_income}
-                          placeholder={t('incomePlaceholder')}
-                          prefix="₹"
-                          onChange={(value) =>
-                            updateField(
-                              'annual_family_income',
-                              value,
-                            )
-                          }
-                        />
-
-                        <SelectField
-                          lang={lang}
-                          icon={Wallet}
-                          label={t('financialConstraint')}
-                          value={form.financial_constraint}
-                          options={['Low', 'Medium', 'High']}
-                          onChange={(value) =>
-                            updateField(
-                              'financial_constraint',
-                              value,
-                            )
-                          }
-                        />
-                      </div>
-
-                      <div className="income-cards">
-                        <div>
-                          <span>{t('incomeLow')}</span>
-                          <p>{t('incomeLowText')}</p>
-                        </div>
-
-                        <div>
-                          <span>{t('incomeMedium')}</span>
-                          <p>{t('incomeMediumText')}</p>
-                        </div>
-
-                        <div>
-                          <span>{t('incomeHigh')}</span>
-                          <p>{t('incomeHighText')}</p>
-                        </div>
-                      </div>
-
-                      <div className="info-box">
-                        <Wallet size={20} />
-
-                        <div>
-                          <strong>{t('mattersTitle')}</strong>
-
-                          <p>{t('mattersText')}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   <div className="form-footer">
                     {step > 0 ? (
@@ -933,18 +1057,18 @@ function App() {
                         onClick={previousStep}
                       >
                         <ArrowLeft size={18} />
-                        {t('back')}
+                        Back
                       </button>
                     ) : (
-                      <div />
+                      <span className="draft-note">
+                        <Check size={15} aria-hidden="true" />
+                        Your answers stay in this tab as you go.
+                      </span>
                     )}
 
                     {step < steps.length - 1 ? (
-                      <button
-                        className="primary-button"
-                        onClick={nextStep}
-                      >
-                        {t('saveContinue')}
+                      <button className="primary-button" onClick={nextStep}>
+                        Save &amp; Continue
                         <ArrowRight size={18} />
                       </button>
                     ) : (
@@ -955,15 +1079,12 @@ function App() {
                       >
                         {loading ? (
                           <>
-                            <Loader2
-                              size={18}
-                              className="animate-spin"
-                            />
-                            {t('saving')}
+                            <Loader2 size={18} className="animate-spin" />
+                            Saving…
                           </>
                         ) : (
                           <>
-                            {t('completeProfile')}
+                            Complete profile
                             <Check size={18} />
                           </>
                         )}
@@ -974,192 +1095,47 @@ function App() {
               </div>
 
               <aside className="info-panel">
-                <SproutScene />
+                <JourneyScene progress={completion.percent} />
 
                 <div className="info-copy">
                   <span className="info-rule" />
-
                   <h2>
-                    {t('infoTitle1')}
+                    Every path
                     <br />
-                    {t('infoTitle2Pre')}
-                    <em>{t('infoTitle2Em')}</em>
-                    {t('infoTitle2Post')}
+                    starts <em>somewhere</em>
                   </h2>
-
-                  <p>{t('infoText')}</p>
+                  <p>
+                    Your profile is the starting point for career, learning and
+                    scholarship guidance on UdaanPath.
+                  </p>
                 </div>
 
-                <ul className="info-list">
-                  {infoPoints.map(
-                    ({ titleKey, textKey, icon: Icon }) => (
-                      <li key={titleKey}>
-                        <span className="info-icon">
-                          <Icon
-                            size={22}
-                            strokeWidth={1.6}
-                          />
-                        </span>
+                <ProfileProgress completion={completion} lang={lang} />
 
-                        <div>
-                          <strong>{t(titleKey)}</strong>
-                          <p>{t(textKey)}</p>
-                        </div>
-                      </li>
-                    ),
-                  )}
+                <ul className="info-list">
+                  {infoPoints.map(({ title, text, icon: Icon }) => (
+                    <li key={title}>
+                      <span className="info-icon">
+                        <Icon size={22} strokeWidth={1.6} />
+                      </span>
+                      <div>
+                        <strong>{title}</strong>
+                        <p>{text}</p>
+                      </div>
+                    </li>
+                  ))}
                 </ul>
               </aside>
             </div>
           </>
         )}
 
-        {/* CAREER DISCOVERY VIEW */}
         {activeNav === 'careers' && (
-          <div className="dashboard-container">
-            <div className="dashboard-top">
-              <div className="dashboard-title">
-                <h2>{t('careersTitle')}</h2>
-
-                <p>{t('careersSubtitle')}</p>
-              </div>
-
-              {student && (
-                <div className="student-badge-pill">
-                  <UserRound size={16} /> {student.full_name} ·{' '}
-                  {optionLabel(lang, student.stream)}
-                </div>
-              )}
-            </div>
-
-            {careers.length === 0 ? (
-              <div className="empty-view">
-                <Compass
-                  size={48}
-                  style={{
-                    margin: '0 auto 16px',
-                    color: '#16866a',
-                  }}
-                />
-
-                <h3>{t('careersEmptyTitle')}</h3>
-
-                <p>{t('careersEmptyText')}</p>
-
-                <button
-                  className="primary-button"
-                  style={{ marginTop: '16px' }}
-                  onClick={() => setActiveNav('profile')}
-                >
-                  {t('goToProfileSetup')}
-                </button>
-              </div>
-            ) : (
-              <div className="card-grid">
-                {careers.map((career) => (
-                  <div
-                    key={career.career_id}
-                    className={`item-card ${
-                      selectedCareerId === career.career_id
-                        ? 'border-mint'
-                        : ''
-                    }`}
-                  >
-                    <div>
-                      <div className="item-card-header">
-                        <div>
-                          <span className="category-tag">
-                            {career.category.replace(
-                              /_/g,
-                              ' ',
-                            )}
-                          </span>
-
-                          <h3 className="item-card-title">
-                            {career.title}
-                          </h3>
-
-                          <span className="item-card-subtitle">
-                            {career.sector}
-                          </span>
-                        </div>
-
-                        <span className="score-badge">
-                          {t('matchPercent', {
-                            n: Math.round(career.match_score),
-                          })}
-                        </span>
-                      </div>
-
-                      <div className="salary-row">
-                        <div className="salary-item">
-                          <span>{t('startingSalary')}</span>
-
-                          <strong>
-                            ₹
-                            {(
-                              career.starting_salary_inr /
-                              100000
-                            ).toFixed(1)}{' '}
-                            {t('lpa')}
-                          </strong>
-                        </div>
-
-                        <div className="salary-item">
-                          <span>{t('midCareer')}</span>
-
-                          <strong>
-                            ₹
-                            {(
-                              career.mid_level_salary_inr /
-                              100000
-                            ).toFixed(1)}{' '}
-                            {t('lpa')}
-                          </strong>
-                        </div>
-
-                        <div className="salary-item">
-                          <span>{t('outlook')}</span>
-                          <strong>{career.growth_outlook}</strong>
-                        </div>
-                      </div>
-
-                      <p className="item-card-body">
-                        {career.rationale}
-                      </p>
-
-                      <div className="skills-wrap">
-                        {career.key_skills.map((skill) => (
-                          <span
-                            key={skill}
-                            className="skill-chip"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button
-                      className="primary-button"
-                      style={{
-                        width: '100%',
-                        marginTop: '12px',
-                      }}
-                      onClick={() =>
-                        handleSelectCareerForRoadmap(
-                          career.career_id,
-                        )
-                      }
-                    >
-                      <BookOpen size={16} />
-                      {t('viewRoadmap')}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <CareerDiscovery
+            recommendations={careers}
+            hasProfile={Boolean(student?.id)}
+            onOpenRoadmap={handleSelectCareerForRoadmap}
+          />
         )}
 
         {/* LEARNING ROADMAP VIEW */}
@@ -1216,7 +1192,7 @@ function App() {
                 <button
                   className="primary-button"
                   style={{ marginTop: '16px' }}
-                  onClick={() => setActiveNav('careers')}
+                  onClick={() => selectNav('careers')}
                 >
                   {t('exploreCareersFirst')}
                 </button>
@@ -1396,7 +1372,7 @@ function App() {
                 <button
                   className="primary-button"
                   style={{ marginTop: '16px' }}
-                  onClick={() => setActiveNav('profile')}
+                  onClick={() => selectNav('profile')}
                 >
                   {t('completeProfileBtn')}
                 </button>
@@ -1743,7 +1719,7 @@ function App() {
               <button
                 className="primary-button"
                 style={{ marginTop: '16px' }}
-                onClick={() => setActiveNav('profile')}
+                onClick={() => selectNav('profile')}
               >
                 {t('backToProfile')}
               </button>
@@ -1751,22 +1727,219 @@ function App() {
           </div>
         )}
 
-        <footer className="footer-note">
-          <span>UdaanPath</span>
-          <span>•</span>
-          <span>{t('footerTagline')}</span>
-        </footer>
+        {activeNav !== 'careers' && (
+          <footer className="footer-note">
+            <span>UdaanPath</span>
+            <span>•</span>
+            <span>{t('footerTagline')}</span>
+          </footer>
+        )}
       </main>
     </PortalShell>
   )
 }
 
+/* ---------------- Journey path stepper ----------------------------------- */
+
+// Node positions in the stepper's 800×120 drawing; the trail passes through
+// each one, and its four segments are close to equal length.
+const JOURNEY_NODES = [
+  [70, 72],
+  [300, 46],
+  [520, 80],
+  [740, 50],
+] as const
+const JOURNEY_D =
+  'M 70 72 C 150 72, 210 46, 300 46 C 390 46, 430 80, 520 80 C 610 80, 650 50, 740 50'
+
+function JourneyPath({
+  step,
+  maxReached,
+  perStep,
+  onGo,
+  onDemo,
+  lang,
+}: {
+  step: number
+  maxReached: number
+  perStep: { filled: number; total: number }[]
+  onGo: (index: number) => void
+  onDemo: () => void
+  lang: Lang
+}) {
+  const trail = step / (steps.length - 1)
+
+  return (
+    <section className="journey-card" aria-label="Profile progress">
+      <div className="journey-head">
+        <span className="journey-kicker">Your journey</span>
+        <span className="journey-tools">
+          <button type="button" className="demo-button" onClick={onDemo}>
+            Fill demo profile
+          </button>
+          <span className="stepper-count">
+            Step {step + 1} of {steps.length}
+          </span>
+        </span>
+      </div>
+
+      <div className="journey">
+        <svg viewBox="0 0 800 120" aria-hidden="true" className="journey-svg">
+          <defs>
+            <linearGradient id="journey-trail" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0" stopColor="#16866a" />
+              <stop offset="1" stopColor="#6be7b2" />
+            </linearGradient>
+          </defs>
+          <path className="journey-base" d={JOURNEY_D} />
+          <path
+            className="journey-glow"
+            d={JOURNEY_D}
+            pathLength={1}
+            style={{ strokeDashoffset: 1 - trail }}
+          />
+          <path
+            className="journey-trail"
+            d={JOURNEY_D}
+            pathLength={1}
+            style={{ strokeDashoffset: 1 - trail }}
+          />
+        </svg>
+
+        <ol className="journey-steps">
+          {steps.map((item, index) => {
+            const state =
+              index === step
+                ? 'active'
+                : index < step || index <= maxReached
+                  ? index < step
+                    ? 'completed'
+                    : 'visited'
+                  : 'upcoming'
+            const reachable = index <= maxReached && index !== step
+            const [x, y] = JOURNEY_NODES[index]
+            const { filled, total } = perStep[index]
+            return (
+              <li
+                key={item.titleKey}
+                className={`journey-step is-${state}`}
+                style={{
+                  left: `${(x / 800) * 100}%`,
+                  top: `${(y / 120) * 100}%`,
+                }}
+              >
+                <button
+                  type="button"
+                  className="journey-node"
+                  onClick={() => onGo(index)}
+                  disabled={!reachable}
+                  aria-current={index === step ? 'step' : undefined}
+                  aria-label={`Step ${index + 1}: ${translate(lang, item.titleKey)}${
+                    state === 'completed'
+                      ? ', done'
+                      : state === 'active'
+                        ? ', current step'
+                        : state === 'upcoming'
+                          ? ', not reached yet'
+                          : ''
+                  }`}
+                >
+                  {state === 'completed' ? <Check size={16} /> : index + 1}
+                </button>
+                <span className="journey-label">
+                  <strong>{translate(lang, item.titleKey)}</strong>
+                  <small>
+                    {filled}/{total} filled
+                  </small>
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+      </div>
+    </section>
+  )
+}
+
+/* ---------------- Real profile completion -------------------------------- */
+
+function ProfileProgress({
+  completion,
+  lang,
+}: {
+  lang: Lang
+  completion: {
+    filled: number
+    total: number
+    percent: number
+    perStep: { filled: number; total: number }[]
+  }
+}) {
+  const R = 30
+  const C = 2 * Math.PI * R
+
+  return (
+    <section className="progress-card" aria-labelledby="progress-title">
+      <div className="progress-top">
+        <svg viewBox="0 0 80 80" className="progress-ring" aria-hidden="true">
+          <circle className="ring-base" cx="40" cy="40" r={R} />
+          <circle
+            className="ring-fill"
+            cx="40"
+            cy="40"
+            r={R}
+            strokeDasharray={C}
+            strokeDashoffset={C * (1 - completion.percent / 100)}
+          />
+        </svg>
+        <div>
+          <h3 id="progress-title">
+            <span className="progress-number">{completion.percent}%</span>{' '}
+            complete
+          </h3>
+          <p>
+            {completion.filled} of {completion.total} details added
+          </p>
+        </div>
+      </div>
+      <ul className="progress-steps">
+        {steps.map((s, i) => {
+          const { filled, total } = completion.perStep[i]
+          return (
+            <li key={s.titleKey}>
+              <span>{translate(lang, s.titleKey)}</span>
+              <span
+                className="progress-bar"
+                role="progressbar"
+                aria-label={`${translate(lang, s.titleKey)} details`}
+                aria-valuemin={0}
+                aria-valuemax={total}
+                aria-valuenow={filled}
+              >
+                <span style={{ width: `${(filled / total) * 100}%` }} />
+              </span>
+              <span className="progress-count">
+                {filled}/{total}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+/**
+ * Portal chrome: dark-green sidebar + top bar. Student Profile and Career
+ * Discovery have URLs; the other views switch inside the portal.
+ */
 function PortalShell({
   initial,
   activeNav,
   onSelectNav,
   lang,
   onChangeLang,
+  tone = 'light',
   children,
 }: {
   initial: string
@@ -1774,76 +1947,54 @@ function PortalShell({
   onSelectNav: (id: NavId) => void
   lang: Lang
   onChangeLang: (lang: Lang) => void
+  tone?: 'light' | 'dark'
   children: ReactNode
 }) {
   const t = (key: MessageKey, vars?: Vars) => translate(lang, key, vars)
 
   return (
-    <div className="portal">
+    <div className={`portal ${tone === 'dark' ? 'portal--dark' : ''}`}>
       <aside className="side">
         <div className="brand">
           <LogoMark size={42} />
-
           <div>
             <span className="brand-name">UdaanPath</span>
-            <span className="brand-tag">
-              {t('brandTag')}
-            </span>
+            <span className="brand-tag">{t('brandTag')}</span>
           </div>
         </div>
 
-        <nav
-          className="side-nav"
-          aria-label={t('ariaStudentPortal')}
-        >
-          {sideNavItems.map(
-            ({ id, labelKey, icon: Icon }) => {
-              const isActive = activeNav === id
-
-              return (
-                <a
-                  key={id}
-                  className={`side-link ${
-                    isActive ? 'active' : ''
-                  }`}
-                  aria-current={
-                    isActive ? 'page' : undefined
-                  }
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => onSelectNav(id)}
-                >
-                  <Icon
-                    size={22}
-                    strokeWidth={1.6}
-                  />
-
-                  <span>{t(labelKey)}</span>
-
-                  {isActive && (
-                    <ChevronRight
-                      size={18}
-                      className="side-chevron"
-                    />
-                  )}
-                </a>
-              )
-            },
-          )}
+        <nav className="side-nav" aria-label={t('ariaStudentPortal')}>
+          {sideNavItems.map(({ id, labelKey, icon: Icon }) => {
+            const isActive = activeNav === id
+            return (
+              <a
+                key={id}
+                className={`side-link ${isActive ? 'active' : ''}`}
+                href={routedViews[id] ?? `#${id}`}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={(event) => {
+                  event.preventDefault()
+                  onSelectNav(id)
+                }}
+              >
+                <Icon size={22} strokeWidth={1.6} />
+                <span>{t(labelKey)}</span>
+                {isActive && (
+                  <ChevronRight size={18} className="side-chevron" />
+                )}
+              </a>
+            )
+          })}
         </nav>
 
-        <div
-          className="side-foot"
-          aria-hidden="true"
-        >
+        <div className="side-foot" aria-hidden="true">
           <SidebarScene />
-
           <div className="side-card">
             <p>
               {t('sideCardLine1')}
               <br />
               <strong>{t('sideCardLine2')}</strong>
             </p>
-
             <span className="side-card-arrow">
               <ArrowRight size={18} />
             </span>
@@ -1858,23 +2009,34 @@ function PortalShell({
             <span>UdaanPath</span>
           </div>
 
-          <nav
-            className="top-nav"
-            aria-label={t('ariaSiteNav')}
-          >
-            {topNav.map(({ labelKey, target }) => {
-              const isActive = activeNav === target
-
+          <nav className="top-nav" aria-label={t('ariaSiteNav')}>
+            {topNav.map(({ labelKey, view }) => {
+              const label = t(labelKey)
+              if (!view) {
+                return (
+                  <a
+                    key={labelKey}
+                    href={routes.home}
+                    onClick={linkTo(routes.home)}
+                  >
+                    {label}
+                  </a>
+                )
+              }
+              const isActive = view === activeNav
               return (
-                <button
-                  key={target}
-                  type="button"
+                <a
+                  key={labelKey}
                   className={isActive ? 'active' : ''}
+                  href={routedViews[view]}
                   aria-current={isActive ? 'page' : undefined}
-                  onClick={() => onSelectNav(target)}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    onSelectNav(view)
+                  }}
                 >
-                  {t(labelKey)}
-                </button>
+                  {label}
+                </a>
               )
             })}
           </nav>
@@ -1882,7 +2044,6 @@ function PortalShell({
           <div className="top-tools">
             <div className="top-search">
               <Search size={18} />
-
               <input
                 type="search"
                 placeholder={t('searchPlaceholder')}
@@ -1903,7 +2064,7 @@ function PortalShell({
                 aria-pressed={lang === 'en'}
                 onClick={() => onChangeLang('en')}
               >
-                English
+                EN
               </button>
               <span className="divider" />
               <button
@@ -1914,20 +2075,14 @@ function PortalShell({
                 aria-pressed={lang === 'hi'}
                 onClick={() => onChangeLang('hi')}
               >
-                Hindi
+                HI
               </button>
             </div>
 
             <div className="top-user">
-              <span
-                className="avatar"
-                aria-hidden="true"
-              >
-                {initial || (
-                  <UserRound size={18} />
-                )}
+              <span className="avatar" aria-hidden="true">
+                {initial || <UserRound size={18} />}
               </span>
-
               <ChevronDown size={16} />
             </div>
           </div>
@@ -1940,7 +2095,8 @@ function PortalShell({
 }
 
 type FieldProps = {
-  lang?: Lang
+  id?: string
+  error?: string
   label: string
   value: string
   placeholder?: string
@@ -1950,13 +2106,12 @@ type FieldProps = {
   icon?: LucideIcon
   hint?: string
   wide?: boolean
-  error?: string
-  localizeValue?: boolean
   onChange: (value: string) => void
 }
 
 function Field({
-  lang = 'en',
+  id,
+  error,
   label,
   value,
   placeholder,
@@ -1966,175 +2121,115 @@ function Field({
   icon: Icon,
   hint,
   wide,
-  error,
-  localizeValue = false,
   onChange,
 }: FieldProps) {
   return (
     <label
-      className={`field ${
-        wide ? 'field--wide' : ''
-      }`}
+      className={`field ${wide ? 'field--wide' : ''} ${error ? 'has-error' : ''}`}
     >
       <span>
-        {label}{' '}
-        {required && (
-          <b aria-hidden="true">*</b>
-        )}
+        {label} {required && <b aria-hidden="true">*</b>}
       </span>
 
       <div
-        className={`input-wrapper ${
-          prefix ? 'has-prefix' : ''
-        } ${Icon ? 'has-icon' : ''} ${
-          error ? 'has-error' : ''
+        className={`input-wrapper ${prefix ? 'has-prefix' : ''} ${
+          Icon ? 'has-icon' : ''
         }`}
       >
-        {Icon && (
-          <Icon
-            size={18}
-            className="field-icon"
-          />
-        )}
-
-        {prefix && (
-          <span className="prefix">
-            {prefix}
-          </span>
-        )}
+        {Icon && <Icon size={18} className="field-icon" />}
+        {prefix && <span className="prefix">{prefix}</span>}
 
         <input
+          id={id}
           type={type}
-          value={localizeValue ? optionLabel(lang, value) : value}
+          value={value}
           placeholder={placeholder}
-          aria-required={
-            required || undefined
-          }
-          aria-invalid={
-            error ? true : undefined
-          }
-          onChange={(event) =>
-            onChange(
-              localizeValue
-                ? optionValue(lang, event.target.value)
-                : event.target.value,
-            )
-          }
+          aria-required={required || undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error && id ? `${id}-error` : undefined}
+          onChange={(event) => onChange(event.target.value)}
         />
       </div>
 
-      {error && (
-        <small className="field-error">
+      {error ? (
+        <small className="field-error" id={id ? `${id}-error` : undefined}>
           {error}
         </small>
-      )}
-
-      {hint && (
-        <small className="field-hint">
-          {hint}
-        </small>
+      ) : (
+        hint && <small className="field-hint">{hint}</small>
       )}
     </label>
   )
 }
 
 type SelectProps = {
-  lang: Lang
+  id?: string
+  error?: string
   label: string
   value: string
   options: string[]
   required?: boolean
   icon?: LucideIcon
   hint?: string
-  error?: string
   onChange: (value: string) => void
 }
 
 function SelectField({
-  lang,
+  id,
+  error,
   label,
   value,
   options,
   required,
   icon: Icon,
   hint,
-  error,
   onChange,
 }: SelectProps) {
   return (
-    <label className="field">
+    <label className={`field ${error ? 'has-error' : ''}`}>
       <span>
-        {label}{' '}
-        {required && (
-          <b aria-hidden="true">*</b>
-        )}
+        {label} {required && <b aria-hidden="true">*</b>}
       </span>
 
       <div
-        className={`input-wrapper select-wrapper ${
-          Icon ? 'has-icon' : ''
-        } ${
+        className={`input-wrapper select-wrapper ${Icon ? 'has-icon' : ''} ${
           value === '' ? 'is-empty' : ''
-        } ${error ? 'has-error' : ''}`}
+        }`}
       >
-        {Icon && (
-          <Icon
-            size={18}
-            className="field-icon"
-          />
-        )}
+        {Icon && <Icon size={18} className="field-icon" />}
 
         <select
+          id={id}
           value={value}
-          aria-required={
-            required || undefined
-          }
-          aria-invalid={
-            error ? true : undefined
-          }
-          onChange={(event) =>
-            onChange(event.target.value)
-          }
+          aria-required={required || undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error && id ? `${id}-error` : undefined}
+          onChange={(event) => onChange(event.target.value)}
         >
-          <option value="">
-            {translate(lang, 'selectPrompt', {
-              label: lang === 'en' ? label.toLowerCase() : label,
-            })}
-          </option>
+          <option value="">Select {label.toLowerCase()}</option>
 
           {options.map((option) => (
-            <option
-              key={option}
-              value={option}
-            >
-              {optionLabel(lang, option)}
+            <option key={option} value={option}>
+              {option}
             </option>
           ))}
         </select>
 
-        <ChevronDown
-          size={18}
-          className="select-chevron"
-        />
+        <ChevronDown size={18} className="select-chevron" />
       </div>
 
-      {error && (
-        <small className="field-error">
+      {error ? (
+        <small className="field-error" id={id ? `${id}-error` : undefined}>
           {error}
         </small>
-      )}
-
-      {hint && (
-        <small className="field-hint">
-          {hint}
-        </small>
+      ) : (
+        hint && <small className="field-hint">{hint}</small>
       )}
     </label>
   )
 }
 
 type TagInputProps = {
-  lang: Lang
   label: string
   placeholder: string
   values: string[]
@@ -2143,7 +2238,6 @@ type TagInputProps = {
 }
 
 function TagInput({
-  lang,
   label,
   placeholder,
   values,
@@ -2167,9 +2261,7 @@ function TagInput({
         <input
           value={input}
           placeholder={placeholder}
-          onChange={(event) =>
-            setInput(event.target.value)
-          }
+          onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault()
@@ -2178,32 +2270,18 @@ function TagInput({
           }}
         />
 
-        <button
-          type="button"
-          onClick={handleAdd}
-        >
+        <button type="button" onClick={handleAdd}>
           <Plus size={18} />
-          {translate(lang, 'addTag')}
+          Add
         </button>
       </div>
 
       <div className="tags">
         {values.map((value) => (
-          <span
-            className="tag"
-            key={value}
-          >
-            {optionLabel(lang, value)}
+          <span className="tag" key={value}>
+            {value}
 
-            <button
-              type="button"
-              aria-label={translate(lang, 'removeItem', {
-                value: optionLabel(lang, value),
-              })}
-              onClick={() =>
-                onRemove(value)
-              }
-            >
+            <button type="button" onClick={() => onRemove(value)}>
               <X size={13} />
             </button>
           </span>

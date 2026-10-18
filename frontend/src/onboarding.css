@@ -1,0 +1,768 @@
+/* ==========================================================================
+   UdaanPath — Student Profile upgrade
+   Layered on top of App.css. Every rule is scoped to the onboarding page
+   (.profile-page, or classes only it renders) so other pages are untouched.
+   ========================================================================== */
+
+.profile-page {
+  --ivory: #faf8f1;
+  --ivory-deep: #f3f2e8;
+  --emerald-ink: #0b3b2e;
+  --mint-glow: rgba(107, 231, 178, 0.22);
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-line: rgba(14, 107, 82, 0.12);
+  --ease-soft: cubic-bezier(0.22, 0.7, 0.2, 1);
+
+  min-height: 100%;
+  background:
+    radial-gradient(ellipse 50% 35% at 85% 0%, rgba(107, 231, 178, 0.14), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 0% 40%, rgba(22, 134, 106, 0.05), transparent 70%),
+    linear-gradient(180deg, var(--ivory), var(--ivory-deep));
+}
+
+/* ---------- Hero ---------- */
+
+.profile-page .eyebrow {
+  border-color: rgba(14, 107, 82, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--green-700);
+}
+
+.profile-page .hero-copy h1 {
+  color: var(--emerald-ink);
+}
+
+/* The hero path draws in once; mist drifts slowly; three fireflies glow. */
+.profile-page .hero-trail path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: ob-draw 1.8s var(--ease-soft) 0.2s forwards;
+}
+
+.profile-page .hero-mist ellipse {
+  animation: ob-mist 22s ease-in-out infinite alternate;
+}
+
+.profile-page .hero-mist ellipse:nth-child(2) {
+  animation-duration: 28s;
+  animation-direction: alternate-reverse;
+}
+
+.profile-page .hero-fireflies circle {
+  opacity: 0.2;
+  animation: ob-firefly 5s ease-in-out infinite;
+}
+
+.profile-page .hero-fireflies circle:nth-child(2) {
+  animation-delay: -1.7s;
+}
+
+.profile-page .hero-fireflies circle:nth-child(3) {
+  animation-delay: -3.4s;
+}
+
+/* ---------- Journey path stepper ---------- */
+
+.journey-card {
+  padding: 20px 26px 16px;
+  border: 1px solid var(--glass-line);
+  border-radius: 20px;
+  background: var(--glass);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 12px 30px rgba(6, 59, 46, 0.06);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.journey-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.journey-kicker {
+  color: var(--green-700);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.journey {
+  position: relative;
+  aspect-ratio: 800 / 120;
+  margin: 2px 0 48px;
+}
+
+.journey-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.journey-svg path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.journey-base {
+  stroke: rgba(14, 107, 82, 0.13);
+  stroke-width: 6;
+}
+
+.journey-glow,
+.journey-trail {
+  stroke-dasharray: 1;
+  transition: stroke-dashoffset 0.9s var(--ease-soft);
+}
+
+.journey-glow {
+  stroke: #6be7b2;
+  stroke-width: 14;
+  opacity: 0.28;
+}
+
+.journey-trail {
+  stroke: url(#journey-trail);
+  stroke-width: 4;
+}
+
+.journey-steps {
+  position: absolute;
+  inset: 0;
+}
+
+/* Each step sits with its node centred on the trail; label hangs below. */
+.journey-step {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  /* Never wider than the gap to the next node, so labels cannot collide. */
+  width: min(128px, 25%);
+  transform: translate(-50%, -20px);
+  text-align: center;
+}
+
+.journey-node {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 2px solid #d3e0d6;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.journey-node:disabled {
+  cursor: default;
+}
+
+.journey-node:not(:disabled):hover {
+  border-color: var(--green-600);
+  box-shadow: 0 0 0 5px var(--mint-glow);
+}
+
+.journey-node:focus-visible {
+  outline: 3px solid rgba(22, 134, 106, 0.45);
+  outline-offset: 3px;
+}
+
+.journey-step.is-completed .journey-node {
+  border-color: var(--green-700);
+  background: var(--green-700);
+  color: #fff;
+}
+
+.journey-step.is-visited .journey-node {
+  border-color: var(--green-600);
+  color: var(--green-800);
+}
+
+.journey-step.is-active .journey-node {
+  border-color: var(--green-900);
+  background: var(--green-900);
+  color: #fff;
+  box-shadow:
+    0 0 0 5px rgba(255, 255, 255, 0.9),
+    0 0 0 7px rgba(22, 134, 106, 0.35),
+    0 6px 18px rgba(6, 59, 46, 0.25);
+  animation: ob-arrive 0.5s var(--ease-soft);
+}
+
+.journey-label {
+  display: grid;
+  gap: 2px;
+}
+
+.journey-label strong {
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.journey-label small {
+  color: var(--placeholder);
+  font-size: 11.5px;
+}
+
+.journey-step.is-upcoming .journey-label strong {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.journey-step.is-active .journey-label small {
+  color: var(--green-700);
+}
+
+/* ---------- Form card ---------- */
+
+.profile-page .form-card {
+  padding: 30px 34px 30px;
+  border: 1px solid var(--glass-line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 18px 40px rgba(6, 59, 46, 0.07);
+}
+
+.profile-page .heading-icon {
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(22, 134, 106, 0.18);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(107, 231, 178, 0.45), transparent 70%),
+    var(--tint);
+}
+
+.profile-page .form-heading h2 {
+  color: var(--emerald-ink);
+  outline: none;
+}
+
+.form-alert {
+  margin: -8px 0 20px;
+  padding: 10px 14px;
+  border: 1px solid #f0c8c1;
+  border-radius: 12px;
+  background: #fdf2ef;
+  color: #8f2d22;
+  font-size: 13.5px;
+}
+
+/* Short, calm transition when a new step appears. */
+.step-body {
+  animation: ob-step-in 0.3s var(--ease-soft) both;
+}
+
+/* Two columns only when each field gets at least 220px; otherwise one. */
+.profile-page .field-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 22px 26px;
+}
+
+/* On mid-size screens the panel gives some width back to the form. */
+.profile-page .content-grid {
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 29vw, 406px);
+  gap: 22px;
+}
+
+.profile-page .field input,
+.profile-page .field select,
+.profile-page .tag-input {
+  min-height: 50px;
+  border-color: #dbe4da;
+  border-radius: 12px;
+  background: #fbfcf8;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.profile-page .field input:focus,
+.profile-page .field select:focus,
+.profile-page .tag-input:focus-within {
+  border-color: var(--green-600);
+  background: #fff;
+  box-shadow: 0 0 0 4px var(--mint-glow);
+}
+
+.profile-page .field-icon {
+  transition: color 0.18s ease, opacity 0.18s ease;
+}
+
+.profile-page .field:focus-within .field-icon {
+  color: var(--green-600);
+  opacity: 1;
+}
+
+.profile-page .field.has-error input,
+.profile-page .field.has-error select {
+  border-color: #c0392b;
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.12);
+}
+
+.field-error {
+  color: #b03a2e;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.profile-page .info-box {
+  border-radius: 14px;
+}
+
+.profile-page .form-footer {
+  gap: 16px;
+  margin-top: 34px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.draft-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.draft-note svg {
+  color: var(--green-600);
+}
+
+/* The primary action leads: deeper, larger, with a soft lift shadow. */
+.profile-page .primary-button {
+  min-height: 54px;
+  padding: 0 30px;
+  border: 1px solid #1b8a6a;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--green-900), var(--green-700));
+  font-size: 15.5px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 10px 24px rgba(6, 59, 46, 0.22);
+}
+
+.profile-page .primary-button:hover {
+  background: linear-gradient(135deg, #0a5341, var(--green-600));
+}
+
+.profile-page .primary-button svg {
+  transition: transform 0.2s ease;
+}
+
+.profile-page .primary-button:hover svg {
+  transform: translateX(3px);
+}
+
+.profile-page .secondary-button {
+  min-height: 54px;
+  border-radius: 14px;
+}
+
+/* ---------- Right panel ---------- */
+
+.profile-page .info-panel {
+  padding: 24px 26px 28px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse 80% 45% at 70% 0%, rgba(107, 231, 178, 0.16), transparent 70%),
+    linear-gradient(180deg, #073f32, #052e24);
+  box-shadow: 0 18px 40px rgba(5, 46, 36, 0.25);
+}
+
+.profile-page .journey-art {
+  position: relative;
+  top: auto;
+  right: auto;
+  width: calc(100% + 16px);
+  height: auto;
+  aspect-ratio: 340 / 236;
+  margin: -8px -8px 6px;
+}
+
+.journey-art-glow,
+.journey-art-trail {
+  stroke-dasharray: 1;
+  transition: stroke-dashoffset 1s var(--ease-soft);
+}
+
+.profile-page .info-copy {
+  max-width: none;
+  min-height: 0;
+}
+
+.profile-page .info-copy h2 {
+  font-size: 30px;
+}
+
+.progress-card {
+  position: relative;
+  z-index: 1;
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid rgba(157, 232, 201, 0.22);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.progress-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.progress-ring {
+  flex: none;
+  width: 68px;
+  height: 68px;
+  transform: rotate(-90deg);
+}
+
+.progress-ring circle {
+  fill: none;
+  stroke-width: 7;
+}
+
+.ring-base {
+  stroke: rgba(157, 232, 201, 0.18);
+}
+
+.ring-fill {
+  stroke: var(--mint-400);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s var(--ease-soft);
+}
+
+.progress-card h3 {
+  margin: 0;
+  color: #e6fff3;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.progress-number {
+  font-family: var(--font-serif);
+  color: var(--mint-400);
+  font-size: 26px;
+  font-weight: 500;
+}
+
+.progress-card p {
+  margin-top: 2px;
+  color: #b9d6c8;
+  font-size: 12.5px;
+}
+
+.progress-steps {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.progress-steps li {
+  display: grid;
+  grid-template-columns: 9.5em minmax(0, 1fr) 3em;
+  align-items: center;
+  gap: 10px;
+  color: #cfe5da;
+  font-size: 12.5px;
+}
+
+.progress-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: rgba(157, 232, 201, 0.16);
+}
+
+.progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2fb583, var(--mint-400));
+  transition: width 0.5s var(--ease-soft);
+}
+
+.progress-count {
+  color: #9fc3b2;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-page .info-list {
+  gap: 16px;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top-color: rgba(157, 232, 201, 0.25);
+}
+
+.profile-page .info-icon {
+  width: 44px;
+  height: 44px;
+}
+
+/* ---------- Success screen ---------- */
+
+.success-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.success-actions .primary-button {
+  text-decoration: none;
+}
+
+.success-card h1 {
+  outline: none;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1179px) {
+  /* The panel stacks under the form, as before. */
+  .profile-page .content-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Keep a compact landscape band in the hero instead of hiding it. */
+  .profile-page .hero-art {
+    position: relative;
+    top: auto;
+    right: auto;
+    display: block;
+    width: 100%;
+    height: 150px;
+    margin-top: 6px;
+  }
+
+  .profile-page .journey-art {
+    width: min(420px, 100%);
+    margin: 0 auto 6px;
+  }
+}
+
+@media (max-width: 700px) {
+  .journey-card {
+    padding: 16px 14px 12px;
+  }
+
+  /* Inset so the first and last labels stay inside the card. */
+  .journey {
+    margin: 2px 22px 40px;
+  }
+
+  .journey-step {
+    width: 25%;
+    gap: 6px;
+    transform: translate(-50%, -16px);
+  }
+
+  .journey-node {
+    width: 32px;
+    height: 32px;
+    font-size: 12.5px;
+  }
+
+  .journey-label strong {
+    font-size: 11.5px;
+  }
+
+  .journey-step:not(.is-active) .journey-label small {
+    display: none;
+  }
+
+  .profile-page .form-card {
+    padding: 22px 18px 24px;
+    border-radius: 18px;
+  }
+
+  .profile-page .hero-art {
+    height: 120px;
+  }
+
+  .profile-page .info-panel {
+    padding: 20px 18px 22px;
+  }
+
+  .profile-page .info-art.journey-art {
+    display: block;
+  }
+
+  .draft-note {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .profile-page .form-footer {
+    align-items: stretch;
+  }
+
+  .draft-note {
+    justify-content: center;
+  }
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes ob-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ob-mist {
+  from {
+    transform: translateX(-16px);
+  }
+  to {
+    transform: translateX(16px);
+  }
+}
+
+@keyframes ob-firefly {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes ob-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ob-arrive {
+  0% {
+    transform: scale(0.86);
+  }
+  60% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-page *,
+  .profile-page *::before,
+  .profile-page *::after {
+    animation: none !important;
+  }
+
+  .profile-page .hero-trail path {
+    stroke-dashoffset: 0;
+  }
+
+  .profile-page .hero-fireflies circle {
+    opacity: 0.5;
+  }
+}
+
+/* ---------- Integration with the API-connected portal ---------- */
+
+/* API errors (profile submission, recommendations, roadmap, advisor). */
+.api-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: 1px solid #f0c8c1;
+  border-radius: 12px;
+  background: #fdf2ef;
+  color: #8f2d22;
+  font-size: 14px;
+}
+
+.api-alert button {
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+.journey-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.demo-button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px dashed rgba(14, 107, 82, 0.4);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--green-700);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.demo-button:hover {
+  border-style: solid;
+  background: #fff;
+}
+
+.demo-note {
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 196, 0, 0.45);
+  border-radius: 12px;
+  background: #fff8e1;
+  color: #6b5200;
+  font-size: 13.5px;
+}
+
+.profile-page .student-badge-pill {
+  margin-top: 14px;
+}
+
+/* Main's loading icons referenced this class without a definition. */
+.animate-spin {
+  animation: ob-spin 1s linear infinite;
+}
+
+@keyframes ob-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin {
+    animation: none;
+  }
+}

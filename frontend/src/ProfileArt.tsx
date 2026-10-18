@@ -250,24 +250,38 @@ export function HeroScene() {
         </g>
         </g>
 
-        <g fill="none" strokeLinecap="round">
+        {/* Ambient layers: mist drifts slowly inside the drawing only. */}
+        <g className="hero-mist" mask="url(#hero-mask-x)">
+          <ellipse cx="430" cy="196" rx="170" ry="16" fill="#ffffff" opacity=".55" />
+          <ellipse cx="560" cy="234" rx="130" ry="12" fill="#ffffff" opacity=".45" />
+        </g>
+
+        <g fill="none" strokeLinecap="round" className="hero-trail">
           <path
             d="M70 134 C80 214 170 238 222 196 C262 164 340 168 372 112"
             stroke="#6BE7B2"
             strokeWidth="9"
             opacity=".5"
             filter="url(#hero-glow)"
+            pathLength={1}
           />
           <path
             d="M70 134 C80 214 170 238 222 196 C262 164 340 168 372 112"
             stroke="url(#hero-path)"
             strokeWidth="3"
+            pathLength={1}
           />
           <path
             d="M96 100 C130 60 160 52 190 50"
             stroke="url(#hero-path)"
             strokeWidth="2.200"
           />
+        </g>
+
+        <g className="hero-fireflies" fill="#3fd39a">
+          <circle cx="300" cy="150" r="2.4" />
+          <circle cx="470" cy="126" r="2" />
+          <circle cx="586" cy="150" r="2.2" />
         </g>
       </svg>
 
@@ -279,123 +293,90 @@ export function HeroScene() {
   )
 }
 
-/** Glowing sprout with floating icon tiles for the right information panel. */
-export function SproutScene() {
+/**
+ * Night landscape for the dark right panel: a winding path climbs from the
+ * valley to a glowing sprout on the ridge. The lit part of the path follows
+ * the real profile completion passed in as `progress` (0–100).
+ */
+export function JourneyScene({ progress }: { progress: number }) {
   const W = 340
-  const H = 330
+  const H = 236
+  const trail =
+    'M 34 222 C 70 200, 40 176, 92 166 C 150 156, 120 128, 176 118 C 226 110, 210 86, 246 72'
 
   return (
-    <div className="info-art" aria-hidden="true">
+    <div className="info-art journey-art" aria-hidden="true">
       <svg viewBox={`0 0 ${W} ${H}`} focusable="false">
         <defs>
-          <linearGradient id="sp-stem" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="#1B9C73" />
-            <stop offset="1" stopColor="#9DE8C9" />
-          </linearGradient>
-          <linearGradient id="sp-leaf" x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0" stopColor="#16866A" />
-            <stop offset="1" stopColor="#8FF0C4" />
-          </linearGradient>
-          <radialGradient id="sp-halo" cx=".5" cy=".5" r=".5">
-            <stop offset="0" stopColor="#3FD39A" stopOpacity=".35" />
-            <stop offset="1" stopColor="#3FD39A" stopOpacity="0" />
+          <radialGradient id="js-moon" cx=".5" cy=".5" r=".5">
+            <stop offset="0" stopColor="#9DE8C9" stopOpacity=".45" />
+            <stop offset="1" stopColor="#9DE8C9" stopOpacity="0" />
           </radialGradient>
-          <filter id="sp-glow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="6" />
+          <linearGradient id="js-trail" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0" stopColor="#1B9C73" />
+            <stop offset="1" stopColor="#B8F5DA" />
+          </linearGradient>
+          <filter id="js-glow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="4" />
           </filter>
         </defs>
 
-        <g transform="translate(30 0)">
-        <ellipse cx="190" cy="205" rx="130" ry="130" fill="url(#sp-halo)" />
+        {/* sky */}
+        <circle cx="262" cy="64" r="70" fill="url(#js-moon)" />
+        <g fill="#B8F5DA" className="journey-stars">
+          <circle cx="40" cy="36" r="1.4" opacity=".7" />
+          <circle cx="96" cy="22" r="1.1" opacity=".55" />
+          <circle cx="150" cy="44" r="1.3" opacity=".6" />
+          <circle cx="210" cy="18" r="1" opacity=".5" />
+          <circle cx="318" cy="30" r="1.3" opacity=".65" />
+          <circle cx="306" cy="104" r="1" opacity=".5" />
+        </g>
 
-        {/* ground ring */}
-        <ellipse
-          cx="190"
-          cy="312"
-          rx="86"
-          ry="14"
-          fill="none"
-          stroke="#3FD39A"
-          strokeOpacity=".55"
-        />
-        <ellipse
-          cx="190"
-          cy="312"
-          rx="56"
-          ry="8"
+        {/* layered hills */}
+        <path d="M0 150 C60 118 120 132 180 104 C230 82 280 92 340 70 V236 H0Z" fill="#0b4a3a" opacity=".55" />
+        <path d="M0 186 C70 160 140 176 210 148 C260 128 300 136 340 124 V236 H0Z" fill="#0b4a3a" opacity=".85" />
+        <path d="M0 214 C80 196 160 210 240 190 C290 178 318 182 340 178 V236 H0Z" fill="#063b2e" />
+        <Pine x={286} y={176} s={1.4} fill="#0e6b52" />
+        <Pine x={306} y={172} s={1.8} fill="#0b5a45" />
+        <Pine x={58} y={200} s={1.3} fill="#0e6b52" />
+        <RoundTree x={124} y={180} s={1} fill="#0e6b52" />
+
+        {/* the path: dim full route, lit up to the current completion */}
+        <path d={trail} fill="none" stroke="#9DE8C9" strokeOpacity=".18" strokeWidth="3" strokeLinecap="round" strokeDasharray="2 6" />
+        <path
+          className="journey-art-glow"
+          d={trail}
           fill="none"
           stroke="#6BE7B2"
-          strokeOpacity=".8"
-        />
-
-        {/* stem */}
-        <path
-          d="M190 312 C186 270 176 236 192 196 C202 170 216 156 226 138"
-          fill="none"
-          stroke="#6BE7B2"
-          strokeWidth="10"
+          strokeWidth="8"
           strokeLinecap="round"
-          opacity=".55"
-          filter="url(#sp-glow)"
+          opacity=".45"
+          filter="url(#js-glow)"
+          pathLength={1}
+          style={{ strokeDashoffset: 1 - progress / 100 }}
         />
         <path
-          d="M190 312 C186 270 176 236 192 196 C202 170 216 156 226 138"
+          className="journey-art-trail"
+          d={trail}
           fill="none"
-          stroke="url(#sp-stem)"
-          strokeWidth="4.500"
+          stroke="url(#js-trail)"
+          strokeWidth="3"
           strokeLinecap="round"
+          pathLength={1}
+          style={{ strokeDashoffset: 1 - progress / 100 }}
         />
 
-        {/* leaves */}
-        <g filter="url(#sp-glow)" opacity=".55">
-          <path
-            d="M226 140 C226 96 262 66 306 70 C310 112 280 146 226 140Z"
-            fill="#6BE7B2"
-          />
-          <path
-            d="M184 214 C150 196 120 168 118 128 C158 128 190 158 184 214Z"
-            fill="#6BE7B2"
-          />
-        </g>
-        <path
-          d="M226 140 C226 96 262 66 306 70 C310 112 280 146 226 140Z"
-          fill="url(#sp-leaf)"
-          stroke="#B8F5DA"
-          strokeOpacity=".7"
-        />
-        <path
-          d="M226 140 C240 118 262 96 290 84"
-          fill="none"
-          stroke="#E6FFF3"
-          strokeOpacity=".6"
-        />
-        <path
-          d="M184 214 C150 196 120 168 118 128 C158 128 190 158 184 214Z"
-          fill="url(#sp-leaf)"
-          stroke="#B8F5DA"
-          strokeOpacity=".7"
-        />
-        <path
-          d="M186 262 C214 250 238 232 244 204 C214 206 192 226 186 262Z"
-          fill="#1B9C73"
-          stroke="#9DE8C9"
-          strokeOpacity=".6"
-        />
-
-        {/* sparkles */}
-        <g fill="#B8F5DA">
-          <circle cx="262" cy="196" r="2.500" opacity=".7" />
-          <circle cx="104" cy="228" r="1.800" opacity=".7" />
-          <circle cx="300" cy="140" r="1.600" opacity=".8" />
-          <circle cx="156" cy="280" r="1.600" opacity=".6" />
-        </g>
+        {/* sprout on the ridge, the destination */}
+        <g transform="translate(246 72)">
+          <circle r="16" fill="#3FD39A" opacity=".18" />
+          <path d="M0 8 V-6" stroke="#9DE8C9" strokeWidth="2" strokeLinecap="round" />
+          <path d="M0 -4 C-2 -14 -12 -16 -16 -12 C-12 -6 -6 -4 0 -4Z" fill="#6BE7B2" />
+          <path d="M0 -6 C2 -16 12 -20 18 -15 C14 -8 7 -6 0 -6Z" fill="#2FB583" />
         </g>
       </svg>
 
-      <Tile icon={GraduationCap} x={268} y={48} w={W} h={H} size={60} tone="dark" rotate={6} />
-      <Tile icon={BookOpen} x={296} y={182} w={W} h={H} size={56} tone="dark" rotate={-4} />
-      <Tile icon={Compass} x={112} y={270} w={W} h={H} size={56} tone="dark" rotate={-5} />
-      <Tile icon={BriefcaseBusiness} x={252} y={266} w={W} h={H} size={54} tone="dark" rotate={4} />
+      <Tile icon={GraduationCap} x={96} y={156} w={W} h={H} size={42} tone="dark" rotate={-5} />
+      <Tile icon={Compass} x={182} y={112} w={W} h={H} size={42} tone="dark" rotate={4} />
     </div>
   )
 }

@@ -232,8 +232,9 @@ ol {
   align-self: stretch;
 }
 
-/* Top nav items are real <button>s (keyboard + screen-reader friendly).
-   The resets keep each one in exactly the same box as the old text link. */
+/* Top nav items are links (or <button>s); the resets keep a button in
+   exactly the same box as a text link. */
+.top-nav a,
 .top-nav button {
   position: relative;
   display: flex;
@@ -252,11 +253,13 @@ ol {
   cursor: pointer;
 }
 
+.top-nav a.active,
 .top-nav button.active {
   color: var(--ink);
   font-weight: 600;
 }
 
+.top-nav a.active::after,
 .top-nav button.active::after {
   position: absolute;
   right: 0;
@@ -286,6 +289,24 @@ ol {
   border-radius: 999px;
   background: #fff;
   color: var(--muted);
+}
+
+/* The fixed-width search box pushed the bar past the viewport around
+   1280–1366px. Let it shrink instead. Scoped to .portal so it keeps
+   precedence over the responsive overrides below. */
+.portal .top-tools {
+  min-width: 0;
+}
+
+.portal .top-search {
+  flex: 0 1 300px;
+  width: auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.portal .top-nav {
+  gap: clamp(14px, 1.6vw, 34px);
 }
 
 .top-search input {
@@ -1862,6 +1883,7 @@ ol {
 }
 
 :lang(hi) .side-link,
+:lang(hi) .top-nav a,
 :lang(hi) .top-nav button,
 :lang(hi) .stepper-item,
 :lang(hi) .field > span,

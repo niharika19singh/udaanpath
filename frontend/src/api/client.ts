@@ -3,7 +3,12 @@
  * Connects frontend UI to FastAPI backend endpoints.
  */
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/, '')
+import type { ApiCareer } from '../careers/discovery'
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(
+  /\/+$/,
+  '',
+)
 
 export interface StudentProfileData {
   id?: number
@@ -15,11 +20,11 @@ export interface StudentProfileData {
   category: string
   state: string
   district: string
-  location_tier: string
+  location_tier?: string
   annual_family_income: number
-  financial_constraint: string
+  financial_constraint?: string
   education_level: string
-  stream: string
+  stream?: string
   percentage_marks: number
   skills: string[]
   interests: string[]
@@ -137,7 +142,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       const errorJson = await response.json()
       if (errorJson.detail) {
         errorMessage = Array.isArray(errorJson.detail)
-          ? errorJson.detail.map((e: { msg?: string }) => e.msg || JSON.stringify(e)).join(', ')
+          ? errorJson.detail
+              .map((e: { msg?: string }) => e.msg || JSON.stringify(e))
+              .join(', ')
           : String(errorJson.detail)
       }
     } catch {
@@ -150,7 +157,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  createProfile: async (data: StudentProfileData): Promise<StudentProfileData> => {
+  createProfile: async (
+    data: StudentProfileData,
+  ): Promise<StudentProfileData> => {
     return request<StudentProfileData>('/profiles/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -161,14 +170,25 @@ export const api = {
     return request<StudentProfileData>(`/profiles/${id}`)
   },
 
-  getRecommendations: async (studentId: number, limit = 6): Promise<CareerRecommendationResponse> => {
+  listCareers: async (): Promise<ApiCareer[]> => {
+    return request<ApiCareer[]>('/careers/?limit=100')
+  },
+
+  getRecommendations: async (
+    studentId: number,
+    limit = 6,
+  ): Promise<CareerRecommendationResponse> => {
     return request<CareerRecommendationResponse>('/careers/recommend', {
       method: 'POST',
       body: JSON.stringify({ student_id: studentId, limit }),
     })
   },
 
-  generatePathway: async (studentId: number, careerId: number, weeklyHours = 12): Promise<PathwayResponse> => {
+  generatePathway: async (
+    studentId: number,
+    careerId: number,
+    weeklyHours = 12,
+  ): Promise<PathwayResponse> => {
     return request<PathwayResponse>('/pathways/generate', {
       method: 'POST',
       body: JSON.stringify({
@@ -179,21 +199,33 @@ export const api = {
     })
   },
 
-  updateMilestoneStatus: async (milestoneId: number, status: string): Promise<MilestoneItem> => {
-    return request<MilestoneItem>(`/pathways/milestones/${milestoneId}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    })
+  updateMilestoneStatus: async (
+    milestoneId: number,
+    status: string,
+  ): Promise<MilestoneItem> => {
+    return request<MilestoneItem>(
+      `/pathways/milestones/${milestoneId}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      },
+    )
   },
 
-  matchOpportunities: async (studentId: number, limit = 6): Promise<OpportunityMatchResponse> => {
+  matchOpportunities: async (
+    studentId: number,
+    limit = 6,
+  ): Promise<OpportunityMatchResponse> => {
     return request<OpportunityMatchResponse>('/opportunities/match', {
       method: 'POST',
       body: JSON.stringify({ student_id: studentId, limit }),
     })
   },
 
-  listOpportunities: async (type?: string, search?: string): Promise<OpportunityItem[]> => {
+  listOpportunities: async (
+    type?: string,
+    search?: string,
+  ): Promise<OpportunityItem[]> => {
     const params = new URLSearchParams()
     if (type) params.set('type', type)
     if (search) params.set('search', search)
@@ -201,7 +233,10 @@ export const api = {
     return request<OpportunityItem[]>(`/opportunities/${queryString}`)
   },
 
-  askAiAdvisor: async (studentId: number, query: string): Promise<AiAdvisorResponse> => {
+  askAiAdvisor: async (
+    studentId: number,
+    query: string,
+  ): Promise<AiAdvisorResponse> => {
     return request<AiAdvisorResponse>('/ai/advise', {
       method: 'POST',
       body: JSON.stringify({ student_id: studentId, query }),
