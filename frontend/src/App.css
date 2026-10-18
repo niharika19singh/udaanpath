@@ -1791,3 +1791,17 @@ ol {
   color: var(--muted);
 }
 
+/* Form validation */
+.field-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c53030;
+}
+
+.input-wrapper.has-error {
+  border-color: #e57373;
+  box-shadow: 0 0 0 2px rgba(197, 48, 48, 0.08);
+}
+
