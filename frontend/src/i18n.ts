@@ -192,10 +192,12 @@ const en = {
   accessPortal: 'Access Portal',
 
   // Opportunities
-  oppsTitle: 'Verified Opportunities & Scholarships',
+  oppsTitle: 'Opportunities & Scholarships',
   oppsSubtitle:
-    'Official government welfare schemes, scholarships, and apprenticeships evaluated with deterministic rules.',
-  oppsBadge: '100% Traceable Indian Schemes',
+    'Scholarships, schemes and apprenticeships checked against your profile with fixed eligibility rules. Confirm details on the official page before applying.',
+  oppsBadge: 'Check official pages before applying',
+  oppsNotVerified:
+    'Not yet verified: confirm the amount and eligibility on the official page.',
   oppsEmptyTitle: 'No opportunities evaluated yet',
   oppsEmptyText:
     'Complete your student profile to evaluate eligibility across national schemes.',
@@ -322,7 +324,8 @@ const en = {
   cdMonths: ' months',
   cdCostToStart: 'Cost to start',
   cdSourceOffline: 'Showing the bundled copy of the UdaanPath career catalogue; the server could not be reached.',
-  cdSourceLive: 'Source: UdaanPath career catalogue.',
+  cdSourceLive:
+    "Figures come from UdaanPath's career catalogue and have not yet been checked against an external source.",
   cdEstimates: 'General estimates, not personalised; actual pay and costs vary by employer, location and institute.',
   cdTabOverview: 'Overview',
   cdTabSkills: 'Skills',
@@ -523,10 +526,12 @@ const hi: Messages = {
   accessPortal: 'पोर्टल खोलें',
 
   // Opportunities
-  oppsTitle: 'सत्यापित अवसर और छात्रवृत्तियाँ',
+  oppsTitle: 'अवसर और छात्रवृत्तियाँ',
   oppsSubtitle:
-    'आधिकारिक सरकारी कल्याण योजनाएँ, छात्रवृत्तियाँ और अप्रेंटिसशिप, जिनकी पात्रता निश्चित नियमों से जाँची गई है।',
-  oppsBadge: '100% पता लगाने योग्य भारतीय योजनाएँ',
+    'छात्रवृत्तियाँ, योजनाएँ और अप्रेंटिसशिप, जिन्हें तय पात्रता नियमों से आपकी प्रोफ़ाइल पर जाँचा गया है। आवेदन से पहले आधिकारिक पेज पर जानकारी की पुष्टि करें।',
+  oppsBadge: 'आवेदन से पहले आधिकारिक पेज देखें',
+  oppsNotVerified:
+    'अभी सत्यापित नहीं: राशि और पात्रता आधिकारिक पेज पर जाँचें।',
   oppsEmptyTitle: 'अभी तक कोई अवसर जाँचा नहीं गया',
   oppsEmptyText:
     'राष्ट्रीय योजनाओं में अपनी पात्रता जाँचने के लिए अपनी छात्र प्रोफ़ाइल पूरी करें।',
@@ -654,7 +659,8 @@ const hi: Messages = {
   cdMonths: ' महीने',
   cdCostToStart: 'शुरुआती लागत',
   cdSourceOffline: 'सर्वर से संपर्क नहीं हो पाया, इसलिए UdaanPath करियर कैटलॉग की साथ आई प्रति दिखाई जा रही है।',
-  cdSourceLive: 'स्रोत: UdaanPath करियर कैटलॉग।',
+  cdSourceLive:
+    'आँकड़े UdaanPath करियर कैटलॉग से हैं और अभी किसी बाहरी स्रोत से जाँचे नहीं गए हैं।',
   cdEstimates: 'ये सामान्य अनुमान हैं, व्यक्तिगत नहीं; असली वेतन और लागत नियोक्ता, जगह और संस्थान के अनुसार बदलती है।',
   cdTabOverview: 'सारांश',
   cdTabSkills: 'कौशल',

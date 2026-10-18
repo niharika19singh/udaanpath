@@ -536,7 +536,9 @@ function App({ route }: { route: Route }) {
   }
 
   const fillDemo = () => {
-    setForm(DEMO_FORM)
+    // A fresh address each time: emails are unique, so a fixed demo email
+    // would be rejected on every run after the first.
+    setForm({ ...DEMO_FORM, email: `aarav.demo+${Date.now()}@example.com` })
     setErrors({})
     setDemoFilled(true)
   }
