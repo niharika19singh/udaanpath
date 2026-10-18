@@ -41,6 +41,15 @@ import {
   type AiAdvisorResponse,
 } from './api/client'
 import CareerDiscovery from './careers/CareerDiscovery.tsx'
+import {
+  eligibilityLabel,
+  readStoredLang,
+  storeLang,
+  t as translate,
+  type Lang,
+  type MessageKey,
+  type Vars,
+} from './i18n'
 import { linkTo, navigate, routes, type Route } from './router.ts'
 import './App.css'
 import './onboarding.css'
@@ -120,27 +129,15 @@ const DEMO_FORM: FormData = {
   financial_constraint: 'High',
 }
 
-const steps = [
-  {
-    title: 'About You',
-    subtitle: "Let's start with some basic information.",
-    icon: Sprout,
-  },
-  {
-    title: 'Education',
-    subtitle: 'Help us understand your academic background',
-    icon: GraduationCap,
-  },
-  {
-    title: 'Skills & Interests',
-    subtitle: 'What are you good at and what interests you?',
-    icon: Brain,
-  },
-  {
-    title: 'Financial Background',
-    subtitle: 'This helps us find suitable opportunities for you',
-    icon: Wallet,
-  },
+const steps: {
+  titleKey: MessageKey
+  subtitleKey: MessageKey
+  icon: LucideIcon
+}[] = [
+  { titleKey: 'step1Title', subtitleKey: 'step1Subtitle', icon: Sprout },
+  { titleKey: 'step2Title', subtitleKey: 'step2Subtitle', icon: GraduationCap },
+  { titleKey: 'step3Title', subtitleKey: 'step3Subtitle', icon: Brain },
+  { titleKey: 'step4Title', subtitleKey: 'step4Subtitle', icon: Wallet },
 ]
 
 type NavId =
@@ -151,12 +148,12 @@ type NavId =
   | 'advisor'
   | 'educators'
 
-const sideNavItems: { id: NavId; label: string; icon: LucideIcon }[] = [
-  { id: 'profile', label: 'Student Profile', icon: UserRound },
-  { id: 'careers', label: 'Career Discovery', icon: Compass },
-  { id: 'pathways', label: 'Learning Roadmap', icon: BookOpen },
-  { id: 'opportunities', label: 'Opportunities', icon: BriefcaseBusiness },
-  { id: 'advisor', label: 'AI Advisor', icon: Brain },
+const sideNavItems: { id: NavId; labelKey: MessageKey; icon: LucideIcon }[] = [
+  { id: 'profile', labelKey: 'sideProfile', icon: UserRound },
+  { id: 'careers', labelKey: 'sideCareers', icon: Compass },
+  { id: 'pathways', labelKey: 'sideRoadmap', icon: BookOpen },
+  { id: 'opportunities', labelKey: 'sideOpportunities', icon: BriefcaseBusiness },
+  { id: 'advisor', labelKey: 'sideAdvisor', icon: Brain },
 ]
 
 /** Each portal view has its own URL so Back/Forward moves between them. */
@@ -169,21 +166,14 @@ const routedViews: Record<NavId, Route> = {
   educators: routes.educators,
 }
 
-const topNav = [
-  'Home',
-  'Explore Careers',
-  'Learning Paths',
-  'Opportunities',
-  'For Educators',
+/** Portal view each top-bar link opens; Home (no view) is the landing page. */
+const topNav: { labelKey: MessageKey; view?: NavId }[] = [
+  { labelKey: 'navHome' },
+  { labelKey: 'navExploreCareers', view: 'careers' },
+  { labelKey: 'navLearningPaths', view: 'pathways' },
+  { labelKey: 'navOpportunities', view: 'opportunities' },
+  { labelKey: 'navForEducators', view: 'educators' },
 ]
-
-/** Portal view each top-bar link opens ('Home' goes to the landing page). */
-const topNavViews: Record<string, NavId> = {
-  'Explore Careers': 'careers',
-  'Learning Paths': 'pathways',
-  Opportunities: 'opportunities',
-  'For Educators': 'educators',
-}
 
 const infoPoints: { title: string; text: string; icon: LucideIcon }[] = [
   {
@@ -370,6 +360,22 @@ function App({ route }: { route: Route }) {
   const [form, setForm] = useState<FormData>(draft?.form ?? initialForm)
   const [errors, setErrors] = useState<Errors>({})
   const [demoFilled, setDemoFilled] = useState(false)
+  const [lang, setLang] = useState<Lang>(readStoredLang)
+  const t = (key: MessageKey, vars?: Vars) => translate(lang, key, vars)
+
+  const changeLang = (next: Lang) => {
+    setLang(next)
+    storeLang(next)
+  }
+
+  // Keep <html lang> in step with the UI language (screen readers, fonts).
+  useEffect(() => {
+    const previous = document.documentElement.lang
+    document.documentElement.lang = lang
+    return () => {
+      document.documentElement.lang = previous
+    }
+  }, [lang])
 
   // Backend-connected state (from origin/main)
   const [student, setStudent] = useState<StudentProfileData | null>(null)
@@ -667,6 +673,8 @@ function App({ route }: { route: Route }) {
       initial={initial}
       activeNav={activeNav}
       onSelectNav={selectNav}
+      lang={lang}
+      onChangeLang={changeLang}
       tone={activeNav === 'careers' ? 'dark' : 'light'}
     >
       <main
@@ -718,6 +726,7 @@ function App({ route }: { route: Route }) {
                   perStep={completion.perStep}
                   onGo={goToStep}
                   onDemo={fillDemo}
+                  lang={lang}
                 />
 
                 {demoFilled && (
@@ -738,9 +747,9 @@ function App({ route }: { route: Route }) {
 
                     <div>
                       <h2 id="form-step-title" ref={headingRef} tabIndex={-1}>
-                        {steps[step].title}
+                        {t(steps[step].titleKey)}
                       </h2>
-                      <p>{steps[step].subtitle}</p>
+                      <p>{t(steps[step].subtitleKey)}</p>
                     </div>
                   </div>
 
@@ -1101,7 +1110,7 @@ function App({ route }: { route: Route }) {
                   </p>
                 </div>
 
-                <ProfileProgress completion={completion} />
+                <ProfileProgress completion={completion} lang={lang} />
 
                 <ul className="info-list">
                   {infoPoints.map(({ title, text, icon: Icon }) => (
@@ -1136,43 +1145,56 @@ function App({ route }: { route: Route }) {
               <div className="dashboard-title">
                 <h2>
                   {pathway
-                    ? `${pathway.career_title} Learning Roadmap`
-                    : 'Learning Roadmap'}
+                    ? t('roadmapTitleFor', {
+                        career: pathway.career_title,
+                      })
+                    : t('roadmapTitle')}
                 </h2>
-                <p>
-                  4-stage milestone pathway with certified free SWAYAM/NPTEL
-                  alternative resources.
-                </p>
+
+                <p>{t('roadmapSubtitle')}</p>
               </div>
+
               {pathway && (
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '10px',
+                  }}
+                >
                   <span className="student-badge-pill">
-                    Duration: ~{pathway.total_estimated_duration_months} Months
+                    {t('duration', {
+                      n: pathway.total_estimated_duration_months,
+                    })}
                   </span>
+
                   <span className="student-badge-pill">
-                    {pathway.weekly_study_hours} hrs / week
+                    {t('hoursPerWeek', { n: pathway.weekly_study_hours })}
                   </span>
                 </div>
               )}
             </div>
 
-            {!pathway || pathway.milestones.length === 0 ? (
+            {!pathway ||
+            pathway.milestones.length === 0 ? (
               <div className="empty-view">
                 <BookOpen
                   size={48}
-                  style={{ margin: '0 auto 16px', color: '#16866a' }}
+                  style={{
+                    margin: '0 auto 16px',
+                    color: '#16866a',
+                  }}
                 />
-                <h3>No roadmap loaded yet</h3>
-                <p>
-                  Select a career from Career Discovery to generate a structured
-                  4-stage roadmap.
-                </p>
+
+                <h3>{t('roadmapEmptyTitle')}</h3>
+
+                <p>{t('roadmapEmptyText')}</p>
+
                 <button
                   className="primary-button"
                   style={{ marginTop: '16px' }}
                   onClick={() => selectNav('careers')}
                 >
-                  Explore Careers First
+                  {t('exploreCareersFirst')}
                 </button>
               </div>
             ) : (
@@ -1181,7 +1203,9 @@ function App({ route }: { route: Route }) {
                   <div
                     key={milestone.id}
                     className={`milestone-box ${
-                      milestone.status === 'completed' ? 'completed' : ''
+                      milestone.status === 'completed'
+                        ? 'completed'
+                        : ''
                     }`}
                   >
                     <div className="milestone-step-num">
@@ -1198,15 +1222,22 @@ function App({ route }: { route: Route }) {
                           <span className="milestone-stage-tag">
                             {milestone.stage}
                           </span>
-                          <h3 className="milestone-title">{milestone.title}</h3>
+
+                          <h3 className="milestone-title">
+                            {milestone.title}
+                          </h3>
                         </div>
+
                         <button
                           className={
                             milestone.status === 'completed'
                               ? 'secondary-button'
                               : 'primary-button'
                           }
-                          style={{ padding: '6px 14px', fontSize: '13px' }}
+                          style={{
+                            padding: '6px 14px',
+                            fontSize: '13px',
+                          }}
                           onClick={() =>
                             handleToggleMilestone(
                               milestone.id,
@@ -1215,8 +1246,8 @@ function App({ route }: { route: Route }) {
                           }
                         >
                           {milestone.status === 'completed'
-                            ? 'Mark In Progress'
-                            : 'Mark Complete'}
+                            ? t('markInProgress')
+                            : t('markComplete')}
                         </button>
                       </div>
 
@@ -1239,31 +1270,53 @@ function App({ route }: { route: Route }) {
                           marginBottom: '8px',
                         }}
                       >
-                        <span>⏱️ {milestone.duration_weeks} Weeks</span>
+                        <span>
+                          ⏱️{' '}
+                          {t('weeks', { n: milestone.duration_weeks })}
+                        </span>
+
                         {milestone.recommended_certification && (
                           <span>
-                            📜 Cert: {milestone.recommended_certification}
+                            📜{' '}
+                            {t('cert', {
+                              value: milestone.recommended_certification,
+                            })}
                           </span>
                         )}
+
                         <span>
-                          💰 Est. Cost: ₹{milestone.estimated_cost_inr}
+                          💰{' '}
+                          {t('estCost', {
+                            n: milestone.estimated_cost_inr,
+                          })}
                         </span>
                       </div>
 
                       <div className="skills-wrap">
-                        {milestone.skills_to_acquire.map((skill) => (
-                          <span key={skill} className="skill-chip">
-                            {skill}
-                          </span>
-                        ))}
+                        {milestone.skills_to_acquire.map(
+                          (skill) => (
+                            <span
+                              key={skill}
+                              className="skill-chip"
+                            >
+                              {skill}
+                            </span>
+                          ),
+                        )}
                       </div>
 
                       {milestone.free_alternative_resource && (
                         <div className="free-resource-banner">
                           <span>
-                            🎓 <strong>Free Alternative:</strong>{' '}
-                            {milestone.free_alternative_resource}
+                            🎓{' '}
+                            <strong>
+                              {t('freeAlternative')}
+                            </strong>{' '}
+                            {
+                              milestone.free_alternative_resource
+                            }
                           </span>
+
                           <a
                             href={milestone.resource_url}
                             target="_blank"
@@ -1274,7 +1327,8 @@ function App({ route }: { route: Route }) {
                               gap: '4px',
                             }}
                           >
-                            Access Portal <ExternalLink size={13} />
+                            {t('accessPortal')}{' '}
+                            <ExternalLink size={13} />
                           </a>
                         </div>
                       )}
@@ -1291,14 +1345,13 @@ function App({ route }: { route: Route }) {
           <div className="dashboard-container">
             <div className="dashboard-top">
               <div className="dashboard-title">
-                <h2>Verified Opportunities &amp; Scholarships</h2>
-                <p>
-                  Official government welfare schemes, scholarships, and
-                  apprenticeships evaluated with deterministic rules.
-                </p>
+                <h2>{t('oppsTitle')}</h2>
+
+                <p>{t('oppsSubtitle')}</p>
               </div>
+
               <span className="student-badge-pill">
-                🔒 100% Traceable Indian Schemes
+                🔒 {t('oppsBadge')}
               </span>
             </div>
 
@@ -1306,52 +1359,88 @@ function App({ route }: { route: Route }) {
               <div className="empty-view">
                 <BriefcaseBusiness
                   size={48}
-                  style={{ margin: '0 auto 16px', color: '#16866a' }}
+                  style={{
+                    margin: '0 auto 16px',
+                    color: '#16866a',
+                  }}
                 />
-                <h3>No opportunities evaluated yet</h3>
-                <p>
-                  Complete your student profile to evaluate eligibility across
-                  national schemes.
-                </p>
+
+                <h3>{t('oppsEmptyTitle')}</h3>
+
+                <p>{t('oppsEmptyText')}</p>
+
                 <button
                   className="primary-button"
                   style={{ marginTop: '16px' }}
                   onClick={() => selectNav('profile')}
                 >
-                  Complete Profile
+                  {t('completeProfileBtn')}
                 </button>
               </div>
             ) : (
               <div className="card-grid">
                 {opportunities.map((item) => {
                   const opp = item.opportunity
-                  const statusClass = item.eligibility_status.toLowerCase()
+                  const statusClass =
+                    item.eligibility_status.toLowerCase()
+
                   return (
-                    <div key={opp.id} className="item-card">
+                    <div
+                      key={opp.id}
+                      className="item-card"
+                    >
                       <div>
                         <div className="item-card-header">
                           <div>
                             <span className="category-tag">
-                              {opp.type.replace(/_/g, ' ')}
+                              {opp.type.replace(
+                                /_/g,
+                                ' ',
+                              )}
                             </span>
-                            <h3 className="item-card-title">{opp.title}</h3>
+
+                            <h3 className="item-card-title">
+                              {opp.title}
+                            </h3>
+
                             <span className="item-card-subtitle">
                               {opp.provider}
                             </span>
                           </div>
-                          <span className={`eligibility-badge ${statusClass}`}>
-                            {item.eligibility_status.replace(/_/g, ' ')}
+
+                          <span
+                            className={`eligibility-badge ${statusClass}`}
+                          >
+                            {eligibilityLabel(
+                              lang,
+                              item.eligibility_status,
+                            )}
                           </span>
                         </div>
 
                         <div className="benefit-box">
-                          <strong>{opp.financial_benefit_description}</strong>
-                          <span>Verified by: {opp.verified_by}</span>
+                          <strong>
+                            {
+                              opp.financial_benefit_description
+                            }
+                          </strong>
+
+                          <span>
+                            {t('verifiedBy', {
+                              value: opp.verified_by,
+                            })}
+                          </span>
                         </div>
 
-                        <p className="item-card-body">{opp.description}</p>
+                        <p className="item-card-body">
+                          {opp.description}
+                        </p>
 
-                        <div style={{ marginBottom: '12px' }}>
+                        <div
+                          style={{
+                            marginBottom: '12px',
+                          }}
+                        >
                           <span
                             style={{
                               fontSize: '12px',
@@ -1359,8 +1448,9 @@ function App({ route }: { route: Route }) {
                               color: '#063b2e',
                             }}
                           >
-                            Eligibility Evaluation:
+                            {t('eligibilityEvaluation')}
                           </span>
+
                           <ul className="reasons-list">
                             {item.reasons.map((r, i) => (
                               <li key={i}>{r}</li>
@@ -1382,7 +1472,8 @@ function App({ route }: { route: Route }) {
                           gap: '8px',
                         }}
                       >
-                        Apply on Official Portal <ExternalLink size={16} />
+                        {t('applyOfficial')}{' '}
+                        <ExternalLink size={16} />
                       </a>
                     </div>
                   )
@@ -1397,15 +1488,13 @@ function App({ route }: { route: Route }) {
           <div className="dashboard-container">
             <div className="dashboard-top">
               <div className="dashboard-title">
-                <h2>AI Career &amp; Education Advisor</h2>
-                <p>
-                  Powered by Gemini LLM with zero-failure deterministic rule
-                  fallback. Ask any questions about careers, schemes, or
-                  preparation.
-                </p>
+                <h2>{t('advisorTitle')}</h2>
+
+                <p>{t('advisorSubtitle')}</p>
               </div>
+
               <span className="student-badge-pill">
-                <Sparkles size={16} /> Intelligent Guidance
+                <Sparkles size={16} /> {t('advisorBadge')}
               </span>
             </div>
 
@@ -1417,19 +1506,24 @@ function App({ route }: { route: Route }) {
                   marginBottom: '8px',
                 }}
               >
-                Ask your question
+                {t('advisorAsk')}
               </h3>
-              <p style={{ color: '#5e6e66', fontSize: '14px' }}>
-                Get tailored advice grounded in official Indian schemes and free
-                educational resources.
+
+              <p
+                style={{
+                  color: '#5e6e66',
+                  fontSize: '14px',
+                }}
+              >
+                {t('advisorAskText')}
               </p>
 
               <div className="prompt-chips">
                 {[
-                  'What high-paying vocational careers can I start after 12th?',
-                  'How can I get government funding for my skill development?',
-                  'What are the job prospects and salary for Solar PV Technicians in India?',
-                  'Suggest free online certifications recognized by employers.',
+                  t('advisorPrompt1'),
+                  t('advisorPrompt2'),
+                  t('advisorPrompt3'),
+                  t('advisorPrompt4'),
                 ].map((promptText) => (
                   <button
                     key={promptText}
@@ -1448,25 +1542,38 @@ function App({ route }: { route: Route }) {
               <div className="advisor-input-row">
                 <input
                   type="text"
-                  placeholder="e.g. Which scholarship is best for girls in engineering with low family income?"
+                  placeholder={t('advisorPlaceholder')}
                   value={advisorQuery}
-                  onChange={(e) => setAdvisorQuery(e.target.value)}
+                  onChange={(e) =>
+                    setAdvisorQuery(e.target.value)
+                  }
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAskAdvisor(advisorQuery)
+                    if (e.key === 'Enter') {
+                      handleAskAdvisor(advisorQuery)
+                    }
                   }}
                 />
+
                 <button
                   type="button"
                   className="primary-button"
-                  disabled={advisorLoading || !advisorQuery.trim()}
-                  onClick={() => handleAskAdvisor(advisorQuery)}
+                  disabled={
+                    advisorLoading ||
+                    !advisorQuery.trim()
+                  }
+                  onClick={() =>
+                    handleAskAdvisor(advisorQuery)
+                  }
                 >
                   {advisorLoading ? (
-                    <Loader2 size={18} className="animate-spin" />
+                    <Loader2
+                      size={18}
+                      className="animate-spin"
+                    />
                   ) : (
                     <>
                       <Sparkles size={18} />
-                      Ask Advisor
+                      {t('advisorButton')}
                     </>
                   )}
                 </button>
@@ -1481,9 +1588,15 @@ function App({ route }: { route: Route }) {
                       marginBottom: '10px',
                     }}
                   >
-                    <strong style={{ color: '#063b2e', fontSize: '16px' }}>
-                      Advisor Recommendation:
+                    <strong
+                      style={{
+                        color: '#063b2e',
+                        fontSize: '16px',
+                      }}
+                    >
+                      {t('advisorRecommendation')}
                     </strong>
+
                     <span
                       style={{
                         fontSize: '11px',
@@ -1492,7 +1605,9 @@ function App({ route }: { route: Route }) {
                         fontWeight: 600,
                       }}
                     >
-                      Provider: {advisorResult.provider}
+                      {t('advisorProvider', {
+                        value: advisorResult.provider,
+                      })}
                     </span>
                   </div>
 
@@ -1508,34 +1623,57 @@ function App({ route }: { route: Route }) {
                   </p>
 
                   {advisorResult.key_takeaways &&
-                    advisorResult.key_takeaways.length > 0 && (
-                      <div style={{ marginBottom: '12px' }}>
+                    advisorResult.key_takeaways.length >
+                      0 && (
+                      <div
+                        style={{
+                          marginBottom: '12px',
+                        }}
+                      >
                         <strong
-                          style={{ fontSize: '13.5px', color: '#052e24' }}
+                          style={{
+                            fontSize: '13.5px',
+                            color: '#052e24',
+                          }}
                         >
-                          Key Takeaways:
+                          {t('keyTakeaways')}
                         </strong>
+
                         <div
                           className="skills-wrap"
                           style={{ marginTop: '6px' }}
                         >
-                          {advisorResult.key_takeaways.map((item, i) => (
-                            <span key={i} className="skill-chip">
-                              {item}
-                            </span>
-                          ))}
+                          {advisorResult.key_takeaways.map(
+                            (item, i) => (
+                              <span
+                                key={i}
+                                className="skill-chip"
+                              >
+                                {item}
+                              </span>
+                            ),
+                          )}
                         </div>
                       </div>
                     )}
 
                   {advisorResult.suggested_action_items &&
-                    advisorResult.suggested_action_items.length > 0 && (
-                      <div style={{ marginBottom: '12px' }}>
+                    advisorResult.suggested_action_items
+                      .length > 0 && (
+                      <div
+                        style={{
+                          marginBottom: '12px',
+                        }}
+                      >
                         <strong
-                          style={{ fontSize: '13.5px', color: '#052e24' }}
+                          style={{
+                            fontSize: '13.5px',
+                            color: '#052e24',
+                          }}
                         >
-                          Action Steps:
+                          {t('actionSteps')}
                         </strong>
+
                         <ul
                           className="reasons-list"
                           style={{ marginTop: '6px' }}
@@ -1554,24 +1692,36 @@ function App({ route }: { route: Route }) {
           </div>
         )}
 
+        {/* EDUCATOR PORTAL (placeholder) */}
         {activeNav === 'educators' && (
           <div className="dashboard-container">
+            <div className="dashboard-top">
+              <div className="dashboard-title">
+                <h2>{t('educatorsTitle')}</h2>
+
+                <p>{t('educatorsSubtitle')}</p>
+              </div>
+            </div>
+
             <div className="empty-view">
               <GraduationCap
                 size={48}
-                style={{ margin: '0 auto 16px', color: '#16866a' }}
+                style={{
+                  margin: '0 auto 16px',
+                  color: '#16866a',
+                }}
               />
-              <h3>For Educators is coming soon</h3>
-              <p>
-                Tools for teachers and counsellors are not built yet. Students
-                can start from the Student Profile or Career Discovery.
-              </p>
+
+              <h3>{t('comingSoon')}</h3>
+
+              <p>{t('educatorsText')}</p>
+
               <button
                 className="primary-button"
                 style={{ marginTop: '16px' }}
-                onClick={() => selectNav('careers')}
+                onClick={() => selectNav('profile')}
               >
-                Explore Careers
+                {t('backToProfile')}
               </button>
             </div>
           </div>
@@ -1581,7 +1731,7 @@ function App({ route }: { route: Route }) {
           <footer className="footer-note">
             <span>UdaanPath</span>
             <span>•</span>
-            <span>Personalized pathways for every student</span>
+            <span>{t('footerTagline')}</span>
           </footer>
         )}
       </main>
@@ -1608,12 +1758,14 @@ function JourneyPath({
   perStep,
   onGo,
   onDemo,
+  lang,
 }: {
   step: number
   maxReached: number
   perStep: { filled: number; total: number }[]
   onGo: (index: number) => void
   onDemo: () => void
+  lang: Lang
 }) {
   const trail = step / (steps.length - 1)
 
@@ -1669,7 +1821,7 @@ function JourneyPath({
             const { filled, total } = perStep[index]
             return (
               <li
-                key={item.title}
+                key={item.titleKey}
                 className={`journey-step is-${state}`}
                 style={{
                   left: `${(x / 800) * 100}%`,
@@ -1682,7 +1834,7 @@ function JourneyPath({
                   onClick={() => onGo(index)}
                   disabled={!reachable}
                   aria-current={index === step ? 'step' : undefined}
-                  aria-label={`Step ${index + 1}: ${item.title}${
+                  aria-label={`Step ${index + 1}: ${translate(lang, item.titleKey)}${
                     state === 'completed'
                       ? ', done'
                       : state === 'active'
@@ -1695,7 +1847,7 @@ function JourneyPath({
                   {state === 'completed' ? <Check size={16} /> : index + 1}
                 </button>
                 <span className="journey-label">
-                  <strong>{item.title}</strong>
+                  <strong>{translate(lang, item.titleKey)}</strong>
                   <small>
                     {filled}/{total} filled
                   </small>
@@ -1713,7 +1865,9 @@ function JourneyPath({
 
 function ProfileProgress({
   completion,
+  lang,
 }: {
+  lang: Lang
   completion: {
     filled: number
     total: number
@@ -1752,12 +1906,12 @@ function ProfileProgress({
         {steps.map((s, i) => {
           const { filled, total } = completion.perStep[i]
           return (
-            <li key={s.title}>
-              <span>{s.title}</span>
+            <li key={s.titleKey}>
+              <span>{translate(lang, s.titleKey)}</span>
               <span
                 className="progress-bar"
                 role="progressbar"
-                aria-label={`${s.title} details`}
+                aria-label={`${translate(lang, s.titleKey)} details`}
                 aria-valuemin={0}
                 aria-valuemax={total}
                 aria-valuenow={filled}
@@ -1783,15 +1937,21 @@ function PortalShell({
   initial,
   activeNav,
   onSelectNav,
+  lang,
+  onChangeLang,
   tone = 'light',
   children,
 }: {
   initial: string
   activeNav: NavId
   onSelectNav: (id: NavId) => void
+  lang: Lang
+  onChangeLang: (lang: Lang) => void
   tone?: 'light' | 'dark'
   children: ReactNode
 }) {
+  const t = (key: MessageKey, vars?: Vars) => translate(lang, key, vars)
+
   return (
     <div className={`portal ${tone === 'dark' ? 'portal--dark' : ''}`}>
       <aside className="side">
@@ -1799,12 +1959,12 @@ function PortalShell({
           <LogoMark size={42} />
           <div>
             <span className="brand-name">UdaanPath</span>
-            <span className="brand-tag">LEARN · EXPLORE · GROW</span>
+            <span className="brand-tag">{t('brandTag')}</span>
           </div>
         </div>
 
-        <nav className="side-nav" aria-label="Student portal">
-          {sideNavItems.map(({ id, label, icon: Icon }) => {
+        <nav className="side-nav" aria-label={t('ariaStudentPortal')}>
+          {sideNavItems.map(({ id, labelKey, icon: Icon }) => {
             const isActive = activeNav === id
             return (
               <a
@@ -1818,7 +1978,7 @@ function PortalShell({
                 }}
               >
                 <Icon size={22} strokeWidth={1.6} />
-                <span>{label}</span>
+                <span>{t(labelKey)}</span>
                 {isActive && (
                   <ChevronRight size={18} className="side-chevron" />
                 )}
@@ -1831,9 +1991,9 @@ function PortalShell({
           <SidebarScene />
           <div className="side-card">
             <p>
-              Different backgrounds.
+              {t('sideCardLine1')}
               <br />
-              <strong>Brighter futures.</strong>
+              <strong>{t('sideCardLine2')}</strong>
             </p>
             <span className="side-card-arrow">
               <ArrowRight size={18} />
@@ -1849,14 +2009,13 @@ function PortalShell({
             <span>UdaanPath</span>
           </div>
 
-          <nav className="top-nav" aria-label="Site">
-            {topNav.map((label) => {
-              const view = topNavViews[label]
-              const isActive = view === activeNav
-              if (label === 'Home') {
+          <nav className="top-nav" aria-label={t('ariaSiteNav')}>
+            {topNav.map(({ labelKey, view }) => {
+              const label = t(labelKey)
+              if (!view) {
                 return (
                   <a
-                    key={label}
+                    key={labelKey}
                     href={routes.home}
                     onClick={linkTo(routes.home)}
                   >
@@ -1864,9 +2023,10 @@ function PortalShell({
                   </a>
                 )
               }
+              const isActive = view === activeNav
               return (
                 <a
-                  key={label}
+                  key={labelKey}
                   className={isActive ? 'active' : ''}
                   href={routedViews[view]}
                   aria-current={isActive ? 'page' : undefined}
@@ -1886,15 +2046,37 @@ function PortalShell({
               <Search size={18} />
               <input
                 type="search"
-                placeholder="Search careers, skills, scholarships..."
-                aria-label="Search careers, skills, scholarships"
+                placeholder={t('searchPlaceholder')}
+                aria-label={t('searchAria')}
               />
             </div>
 
-            <div className="top-lang" aria-label="Language">
-              <span className="on">EN</span>
+            <div
+              className="top-lang"
+              role="group"
+              aria-label={t('ariaLanguage')}
+            >
+              <button
+                type="button"
+                className={lang === 'en' ? 'on' : ''}
+                lang="en"
+                aria-label={t('ariaEnglish')}
+                aria-pressed={lang === 'en'}
+                onClick={() => onChangeLang('en')}
+              >
+                EN
+              </button>
               <span className="divider" />
-              <span>HI</span>
+              <button
+                type="button"
+                className={lang === 'hi' ? 'on' : ''}
+                lang="hi"
+                aria-label={t('ariaHindi')}
+                aria-pressed={lang === 'hi'}
+                onClick={() => onChangeLang('hi')}
+              >
+                HI
+              </button>
             </div>
 
             <div className="top-user">
