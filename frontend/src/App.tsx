@@ -1488,7 +1488,7 @@ function App({ route }: { route: Route }) {
               </div>
 
               <span className="student-badge-pill">
-                <Sparkles size={16} /> {t('advisorBadge')}
+                <Compass size={16} /> {t('advisorBadge')}
               </span>
             </div>
 
@@ -1512,6 +1512,25 @@ function App({ route }: { route: Route }) {
                 {t('advisorAskText')}
               </p>
 
+              {!student && (
+                <div className="empty-view" role="status">
+                  <UserRound
+                    size={40}
+                    style={{ margin: '0 auto 12px', color: '#16866a' }}
+                  />
+                  <h3>{t('advisorNoProfileTitle')}</h3>
+                  <p>{t('advisorNoProfileText')}</p>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    style={{ marginTop: '16px' }}
+                    onClick={() => selectNav('profile')}
+                  >
+                    {t('completeProfileBtn')}
+                  </button>
+                </div>
+              )}
+
               <div className="prompt-chips">
                 {[
                   t('advisorPrompt1'),
@@ -1523,6 +1542,7 @@ function App({ route }: { route: Route }) {
                     key={promptText}
                     type="button"
                     className="prompt-chip"
+                    disabled={!student || advisorLoading}
                     onClick={() => {
                       setAdvisorQuery(promptText)
                       handleAskAdvisor(promptText)
@@ -1537,6 +1557,7 @@ function App({ route }: { route: Route }) {
                 <input
                   type="text"
                   placeholder={t('advisorPlaceholder')}
+                  disabled={!student}
                   value={advisorQuery}
                   onChange={(e) =>
                     setAdvisorQuery(e.target.value)
@@ -1552,6 +1573,7 @@ function App({ route }: { route: Route }) {
                   type="button"
                   className="primary-button"
                   disabled={
+                    !student ||
                     advisorLoading ||
                     !advisorQuery.trim()
                   }
@@ -1599,9 +1621,10 @@ function App({ route }: { route: Route }) {
                         fontWeight: 600,
                       }}
                     >
-                      {t('advisorProvider', {
-                        value: advisorResult.provider,
-                      })}
+                      {advisorResult.is_ai_generated &&
+                      advisorResult.provider === 'gemini'
+                        ? t('advisorSourceAi')
+                        : t('advisorSourceRules')}
                     </span>
                   </div>
 

@@ -123,6 +123,8 @@ export interface AiAdvisorResponse {
   is_ai_generated: boolean
   provider: string
   suggested_action_items: string[]
+  /** What the question was classified as (careers, funding, ...). */
+  topic?: string
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {

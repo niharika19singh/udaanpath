@@ -149,3 +149,107 @@ def test_llm_is_skipped_when_no_verified_records_exist(client: TestClient, monke
 
     assert response.status_code == 200
     assert response.json()["is_ai_generated"] is False
+
+
+def _advisor_student(client: TestClient, email: str) -> int:
+    payload = {
+        "full_name": "Topic Test Student",
+        "email": email,
+        "age": 18,
+        "gender": "female",
+        "category": "OBC",
+        "state": "Uttar Pradesh",
+        "district": "Varanasi",
+        "annual_family_income": 150000.0,
+        "education_level": "12th_pass",
+        "stream": "science_pcm",
+        "percentage_marks": 75.0,
+        "skills": ["Basic Computers"],
+        "interests": ["Technology"],
+    }
+    return client.post("/api/v1/profiles/", json=payload).json()["id"]
+
+
+def test_questions_are_classified_into_topics():
+    classify = AIAdvisorService.classify_query
+    assert classify("Which scholarship is best for girls in engineering with low family income?") == "funding"
+    assert classify("How can I get government funding for my skill development?") == "funding"
+    assert classify("Suggest free online certifications recognized by employers.") == "courses"
+    assert classify("What high-paying vocational careers can I start after 12th?") == "careers"
+    assert classify("Am I eligible, and what is the deadline to apply?") == "eligibility"
+    assert classify("मुझे छात्रवृत्ति कैसे मिलेगी?") == "funding"
+    assert classify("hello") == "general"
+    assert classify(None) == "general"
+
+
+def test_fallback_answer_depends_on_the_question(client: TestClient, monkeypatch):
+    monkeypatch.setattr(settings, "ENABLE_LLM", False)
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "")
+    student_id = _advisor_student(client, "topic.fallback@example.com")
+
+    funding = client.post("/api/v1/ai/advise", json={
+        "student_id": student_id, "query": "Which scholarships can I get?",
+    }).json()
+    careers = client.post("/api/v1/ai/advise", json={
+        "student_id": student_id, "query": "What jobs fit me after 12th?",
+    }).json()
+
+    for data in (funding, careers):
+        assert data["is_ai_generated"] is False
+        assert data["provider"] == "rule_engine_fallback"
+        assert "not by an AI model" in data["narrative_advice"]
+        assert "unknown" in data["narrative_advice"]
+    assert funding["topic"] == "funding"
+    assert careers["topic"] == "careers"
+    assert funding["narrative_advice"] != careers["narrative_advice"]
+    assert "scholarships and funding" in funding["narrative_advice"]
+    assert "careers and jobs" in careers["narrative_advice"]
+    # Funding answers point to official pages for the matched programmes.
+    assert any("https://" in item for item in funding["suggested_action_items"])
+
+
+def test_llm_prompt_gets_topic_but_not_the_question(client: TestClient, monkeypatch):
+    monkeypatch.setattr(settings, "ENABLE_LLM", True)
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "unit-test-key")
+    captured = {}
+    monkeypatch.setattr(
+        AIAdvisorService,
+        "_build_rule_engine_context",
+        lambda self, student: {"careers": [{"title": "Example career", "score": 70.0}], "opportunities": []},
+    )
+
+    def mock_llm(self, prompt):
+        captured["prompt"] = prompt
+        return "Explained."
+
+    monkeypatch.setattr(AIAdvisorService, "_call_gemini_api", mock_llm)
+    student_id = _advisor_student(client, "topic.llm@example.com")
+    data = client.post("/api/v1/ai/advise", json={
+        "student_id": student_id, "query": "Which secret scholarship should I apply for?",
+    }).json()
+
+    assert data["is_ai_generated"] is True
+    assert data["provider"] == "gemini"
+    assert data["topic"] == "funding"
+    assert "scholarships and funding" in captured["prompt"]
+    assert "secret scholarship" not in captured["prompt"]
+
+
+def test_failed_llm_call_falls_back_honestly(client: TestClient, monkeypatch):
+    monkeypatch.setattr(settings, "ENABLE_LLM", True)
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "unit-test-key")
+    monkeypatch.setattr(
+        AIAdvisorService,
+        "_build_rule_engine_context",
+        lambda self, student: {"careers": [{"title": "Example career", "score": 70.0}], "opportunities": []},
+    )
+    monkeypatch.setattr(AIAdvisorService, "_call_gemini_api", lambda self, prompt: None)
+    student_id = _advisor_student(client, "topic.llmfail@example.com")
+    data = client.post("/api/v1/ai/advise", json={
+        "student_id": student_id, "query": "free courses to learn coding",
+    }).json()
+
+    assert data["is_ai_generated"] is False
+    assert data["provider"] == "rule_engine_fallback"
+    assert data["topic"] == "courses"
+    assert any("https://" in item for item in data["suggested_action_items"])
