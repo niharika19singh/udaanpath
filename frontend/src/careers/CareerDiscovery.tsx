@@ -23,6 +23,13 @@ import {
   X,
 } from 'lucide-react'
 import { api, type CareerItem } from '../api/client'
+import {
+  discoveryLabel,
+  t as translate,
+  type Lang,
+  type MessageKey,
+  type Vars,
+} from '../i18n'
 import { linkTo, routes } from '../router.ts'
 import {
   applyCatalogue,
@@ -127,6 +134,29 @@ type Tab = (typeof tabs)[number]
 const CatalogueContext = createContext<Career[]>(careers)
 const useCatalogue = () => useContext(CatalogueContext)
 
+/** UI language; career facts from the API are shown as received. */
+const LangContext = createContext<Lang>('en')
+const useI18n = () => {
+  const lang = useContext(LangContext)
+  return {
+    tr: (key: MessageKey, vars?: Vars) => translate(lang, key, vars),
+    label: (value: string) => discoveryLabel(lang, value),
+  }
+}
+
+const tabKeys: Record<Tab, MessageKey> = {
+  Overview: 'cdTabOverview',
+  Skills: 'cdTabSkills',
+  Pathway: 'cdTabPathway',
+  Opportunities: 'cdTabOpportunities',
+}
+
+const costKeys: Record<string, MessageKey> = {
+  low: 'cdCostLow',
+  moderate: 'cdCostModerate',
+  high: 'cdCostHigh',
+}
+
 /** Backend recommender output for the submitted profile, keyed by slug. */
 type Recommendation = { careerId: number; score: number; rationale: string }
 const RecommendationContext = createContext<Record<string, Recommendation>>({})
@@ -145,6 +175,8 @@ export type CareerDiscoveryProps = {
   hasProfile?: boolean
   /** Opens the generated learning roadmap for a backend career id. */
   onOpenRoadmap?: (careerId: number) => void
+  /** UI language chosen in the portal's EN/HI toggle. */
+  lang?: Lang
 }
 
 /* ========================================================================== */
@@ -153,7 +185,10 @@ function CareerDiscovery({
   recommendations = [],
   hasProfile = false,
   onOpenRoadmap,
+  lang = 'en',
 }: CareerDiscoveryProps) {
+  const tr = (key: MessageKey, vars?: Vars) => translate(lang, key, vars)
+  const label = (value: string) => discoveryLabel(lang, value)
   const [catalogue, setCatalogue] = useState<CatalogueState>({
     list: careers,
     ids: {},
@@ -258,6 +293,7 @@ function CareerDiscovery({
   const selectedDbId = catalogue.ids[selected.id]
 
   return (
+    <LangContext.Provider value={lang}>
     <CatalogueContext.Provider value={list}>
       <RecommendationContext.Provider value={recBySlug}>
         <div className="cd">
@@ -265,15 +301,14 @@ function CareerDiscovery({
             <header className="cd-head">
               <p className="cd-eyebrow">
                 <Compass size={16} aria-hidden="true" />
-                Career discovery
+                {tr('cdEyebrow')}
               </p>
               <h1 id="cd-title">
-                Find your next <em>possibility</em>
+                {tr('cdTitleA')}
+                <em>{tr('cdTitleB')}</em>
               </h1>
               <p className="cd-lede">
-                Explore {list.length} real careers across three families. Pick
-                interests and filters to see which paths fit, then compare the
-                skills, training and pay for each.
+                {tr('cdLede', { n: list.length })}
               </p>
               <Constellation />
             </header>
@@ -282,7 +317,7 @@ function CareerDiscovery({
               selected={selected}
               overlap={overlap}
               visible={visible}
-              pickedLabels={pickedLabels.map((t) => t.label)}
+              pickedLabels={pickedLabels.map((t) => label(t.label))}
               onSelect={select}
             />
 
@@ -295,13 +330,19 @@ function CareerDiscovery({
 
             <p className="cd-count" aria-live="polite">
               {filtersActive
-                ? `${visibleCount} of ${list.length} careers fit your filters.`
-                : `${list.length} careers across ${families.length} career families.`}
+                ? tr('cdCountFiltered', {
+                    visible: visibleCount,
+                    total: list.length,
+                  })
+                : tr('cdCountAll', {
+                    total: list.length,
+                    families: families.length,
+                  })}
             </p>
             {/* When the details panel sits below the map, the user chooses
               whether to jump to it; selecting never scrolls the page. */}
             <a className="cd-jump" href="#cd-details-panel">
-              View {selected.name} details
+              {tr('cdViewDetails', { name: selected.name })}
               <ArrowRight size={15} aria-hidden="true" />
             </a>
           </section>
@@ -344,11 +385,11 @@ function CareerDiscovery({
             <div className="cd-panel-head">
               <Compass size={22} className="cd-panel-icon" aria-hidden="true" />
               <div>
-                <h2 id="cd-interests-title">Explore by interest</h2>
-                <p>Select topics that interest you.</p>
+                <h2 id="cd-interests-title">{tr('cdInterestsTitle')}</h2>
+                <p>{tr('cdInterestsText')}</p>
               </div>
             </div>
-            <ul className="cd-chips" aria-label="Interests">
+            <ul className="cd-chips" aria-label={tr('cdInterestsAria')}>
               {topics.map((t) => (
                 <li key={t.id}>
                   <button
@@ -357,7 +398,7 @@ function CareerDiscovery({
                     aria-pressed={picked.includes(t.id)}
                     onClick={() => togglePicked(t.id)}
                   >
-                    {t.label}
+                    {label(t.label)}
                   </button>
                 </li>
               ))}
@@ -370,19 +411,19 @@ function CareerDiscovery({
           >
             <div className="cd-panel-head">
               <Filter size={22} className="cd-panel-icon" aria-hidden="true" />
-              <h2 id="cd-filters-title">Filters</h2>
+              <h2 id="cd-filters-title">{tr('cdFilters')}</h2>
               <button
                 type="button"
                 className="cd-clear"
                 onClick={clearAll}
                 disabled={!filtersActive && picked.length === 0}
               >
-                Clear all
+                {tr('cdClearAll')}
               </button>
             </div>
             <div className="cd-selects">
               <Select
-                label="Your education"
+                label={tr('cdYourEducation')}
                 icon={GraduationCap}
                 value={filters.education}
                 onChange={(v) =>
@@ -392,39 +433,48 @@ function CareerDiscovery({
                   })
                 }
                 options={[
-                  ['', 'Any level'],
-                  ['10th_pass', '10th pass'],
-                  ['12th_pass', '12th pass'],
+                  ['', tr('cdAnyLevel')],
+                  ['10th_pass', label('10th pass')],
+                  ['12th_pass', label('12th pass')],
                 ]}
               />
               <Select
-                label="Stream"
+                label={tr('cdStream')}
                 icon={Sparkles}
                 value={filters.stream}
                 onChange={(v) =>
                   setFilters({ ...filters, stream: v as Filters['stream'] })
                 }
-                options={[['', 'Any stream'], ...Object.entries(streamLabels)]}
+                options={[
+                  ['', tr('cdAnyStream')],
+                  ...Object.entries(streamLabels).map(([v, text]) => [
+                    v,
+                    label(text),
+                  ]),
+                ]}
               />
               <Select
-                label="Industry"
+                label={tr('cdIndustry')}
                 icon={TrendingUp}
                 value={filters.sector}
                 onChange={(v) => setFilters({ ...filters, sector: v })}
-                options={[['', 'Any industry'], ...sectors.map((s) => [s, s])]}
+                options={[
+                  ['', tr('cdAnyIndustry')],
+                  ...sectors.map((s) => [s, s]),
+                ]}
               />
               <Select
-                label="Training time"
+                label={tr('cdTrainingTime')}
                 icon={Clock}
                 value={filters.training}
                 onChange={(v) =>
                   setFilters({ ...filters, training: v as Filters['training'] })
                 }
                 options={[
-                  ['', 'Any length'],
-                  ['3', 'Up to 3 months'],
-                  ['6', 'Up to 6 months'],
-                  ['12', 'Up to 12 months'],
+                  ['', tr('cdAnyLength')],
+                  ['3', tr('cdUpToMonths', { n: 3 })],
+                  ['6', tr('cdUpToMonths', { n: 6 })],
+                  ['12', tr('cdUpToMonths', { n: 12 })],
                 ]}
               />
             </div>
@@ -432,6 +482,7 @@ function CareerDiscovery({
         </div>
       </RecommendationContext.Provider>
     </CatalogueContext.Provider>
+    </LangContext.Provider>
   )
 }
 
@@ -453,6 +504,7 @@ function PathwayMap({
   onSelect,
 }: MapProps) {
   const list = useCatalogue()
+  const { tr, label } = useI18n()
   return (
     <div className="cd-map-frame">
       <div className="cd-map">
@@ -586,19 +638,21 @@ function PathwayMap({
           className="cd-strengths"
           style={{ left: 0, top: py(ROOT_Y), width: px(ROOT_X) }}
         >
-          <p className="cd-strengths-title">Your picks</p>
+          <p className="cd-strengths-title">{tr('cdYourPicks')}</p>
           {pickedLabels.length > 0 ? (
             <ul>
               {pickedLabels.slice(0, 4).map((l) => (
                 <li key={l}>{l}</li>
               ))}
               {pickedLabels.length > 4 && (
-                <li className="more">+{pickedLabels.length - 4} more</li>
+                <li className="more">
+                  {tr('cdMore', { n: pickedLabels.length - 4 })}
+                </li>
               )}
             </ul>
           ) : (
             <p className="cd-strengths-empty">
-              Pick topics below to see which paths fit.
+              {tr('cdPickTopics')}
             </p>
           )}
           <a
@@ -606,7 +660,7 @@ function PathwayMap({
             href={routes.onboarding}
             onClick={linkTo(routes.onboarding)}
           >
-            Build profile
+            {tr('cdBuildProfile')}
             <ArrowRight size={14} aria-hidden="true" />
           </a>
         </div>
@@ -632,8 +686,8 @@ function PathwayMap({
                   <f.icon size={24} />
                 </span>
                 <span className="cd-family-label">
-                  <strong>{f.name}</strong>
-                  <span>{f.areas}</span>
+                  <strong>{label(f.name)}</strong>
+                  <span>{label(f.areas)}</span>
                 </span>
               </div>
               {f.stations.map((s, i) => (
@@ -648,14 +702,14 @@ function PathwayMap({
                     } as CSSProperties
                   }
                 >
-                  {s}
+                  {label(s)}
                 </span>
               ))}
             </div>
           )
         })}
 
-        <ul className="cd-dest" aria-label="Careers">
+        <ul className="cd-dest" aria-label={tr('cdCareersAria')}>
           {list.map((c) => (
             <li
               key={c.id}
@@ -690,6 +744,7 @@ function FamilyList({
   onSelect,
 }: Omit<MapProps, 'pickedLabels'>) {
   const list = useCatalogue()
+  const { label } = useI18n()
   return (
     <div className="cd-families">
       {families.map((f) => (
@@ -698,15 +753,15 @@ function FamilyList({
           className="cd-family-block"
           data-active={selected.family === f.id ? '' : undefined}
           style={{ '--from': f.from, '--to': f.to } as CSSProperties}
-          aria-label={f.name}
+          aria-label={label(f.name)}
         >
           <div className="cd-family cd-family--static">
             <span className="cd-family-node" aria-hidden="true">
               <f.icon size={22} />
             </span>
             <span className="cd-family-label">
-              <strong>{f.name}</strong>
-              <span>{f.areas}</span>
+              <strong>{label(f.name)}</strong>
+              <span>{label(f.areas)}</span>
             </span>
           </div>
           <ul className="cd-family-cards">
@@ -747,6 +802,7 @@ function CareerCard({
 }) {
   const family = families.find((f) => f.id === career.family)!
   const rec = useContext(RecommendationContext)[career.id]
+  const { tr, label } = useI18n()
   return (
     <button
       type="button"
@@ -764,19 +820,21 @@ function CareerCard({
         <strong>{career.name}</strong>
         <span className="cd-card-meta">
           {!visible ? (
-            <span className="cd-badge cd-badge--muted">Outside filters</span>
+            <span className="cd-badge cd-badge--muted">
+              {tr('cdOutsideFilters')}
+            </span>
           ) : rec ? (
             <span className="cd-badge cd-badge--match">
-              {Math.round(rec.score)}/100 profile match
+              {tr('cdProfileMatch', { n: Math.round(rec.score) })}
             </span>
           ) : overlap > 0 ? (
             <span className="cd-badge cd-badge--match">
-              Fits {overlap} of your picks
+              {tr('cdFitsPicks', { n: overlap })}
             </span>
           ) : (
             <span className="cd-badge">
-              {labelQualification(career.qualification)} · ~
-              {career.trainingMonths} mo
+              {label(labelQualification(career.qualification))} ·{' '}
+              {tr('cdMonthsShort', { n: career.trainingMonths })}
             </span>
           )}
         </span>
@@ -813,6 +871,7 @@ function Details({
 }) {
   const family = families.find((f) => f.id === career.family)!
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const { tr, label } = useI18n()
 
   const onKey = (event: KeyboardEvent<HTMLButtonElement>, i: number) => {
     const n = tabs.length
@@ -837,13 +896,15 @@ function Details({
       style={{ '--from': family.from, '--to': family.to } as CSSProperties}
     >
       <div className="cd-details-bar">
-        <p>Career details</p>
+        <p>{tr('cdCareerDetails')}</p>
         <button
           type="button"
           className="cd-icon-button"
           aria-pressed={saved}
           aria-label={
-            saved ? `Remove ${career.name} from saved` : `Save ${career.name}`
+            saved
+              ? tr('cdUnsave', { name: career.name })
+              : tr('cdSave', { name: career.name })
           }
           onClick={onToggleSave}
         >
@@ -859,33 +920,37 @@ function Details({
           <h2 id="cd-details-title">{career.name}</h2>
           {career.title !== career.name && (
             <p className="cd-details-official">
-              Catalogue title: {career.title}
+              {tr('cdCatalogueTitle', { title: career.title })}
             </p>
           )}
           <p className="cd-details-sector">{career.sector}</p>
           <p className="cd-details-badges">
-            <span className="cd-badge cd-badge--accent">{family.name}</span>
+            <span className="cd-badge cd-badge--accent">
+              {label(family.name)}
+            </span>
             <span className="cd-badge">
-              From {labelQualification(career.qualification)}
+              {tr('cdFromQualification', {
+                q: label(labelQualification(career.qualification)),
+              })}
             </span>
           </p>
         </div>
       </div>
       {!visible && (
         <p className="cd-details-note">
-          This career is outside your current filters.
+          {tr('cdOutsideNote')}
         </p>
       )}
 
       {rec && (
-        <section className="cd-rec" aria-label="Your profile match">
+        <section className="cd-rec" aria-label={tr('cdYourMatch')}>
           <p className="cd-rec-score">
             <strong>{Math.round(rec.score)}</strong>
-            <span>/100 profile match</span>
+            <span>{tr('cdProfileMatchSuffix')}</span>
           </p>
           <p className="cd-rec-why">{rec.rationale}</p>
           <p className="cd-fine">
-            From UdaanPath&apos;s recommender, using the profile you submitted.
+            {tr('cdRecommenderNote')}
           </p>
         </section>
       )}
@@ -893,60 +958,65 @@ function Details({
       {/* Catalogue figures stay visible across tabs, with their source. */}
       <section className="cd-glance" aria-labelledby="cd-glance-title">
         <h3 id="cd-glance-title" className="cd-sub">
-          At a glance
+          {tr('cdAtAGlance')}
         </h3>
         <dl className="cd-stats" key={career.id}>
           <div>
             <dt>
               <IndianRupee size={14} aria-hidden="true" />
-              Starting pay
+              {tr('cdStartingPay')}
             </dt>
             <dd>
               {formatLakh(career.startingSalary)}
-              <span> / year</span>
+              <span>{tr('cdPerYear')}</span>
             </dd>
           </div>
           <div>
             <dt>
               <TrendingUp size={14} aria-hidden="true" />
-              Mid-level pay
+              {tr('cdMidPay')}
             </dt>
             <dd>
               {formatLakh(career.midSalary)}
-              <span> / year</span>
+              <span>{tr('cdPerYear')}</span>
             </dd>
           </div>
           <div>
             <dt>
               <Clock size={14} aria-hidden="true" />
-              Training
+              {tr('cdTraining')}
             </dt>
             <dd>
               ~{career.trainingMonths}
-              <span> months</span>
+              <span>{tr('cdMonths')}</span>
             </dd>
           </div>
           <div>
             <dt>
               <Wallet size={14} aria-hidden="true" />
-              Cost to start
+              {tr('cdCostToStart')}
             </dt>
             <dd>
-              {career.costBarrier.charAt(0).toUpperCase() +
-                career.costBarrier.slice(1)}
+              {costKeys[career.costBarrier]
+                ? tr(costKeys[career.costBarrier])
+                : career.costBarrier.charAt(0).toUpperCase() +
+                  career.costBarrier.slice(1)}
             </dd>
           </div>
         </dl>
         <p className="cd-source">
           {source === 'offline'
-            ? 'Showing the bundled copy of the UdaanPath career catalogue; the server could not be reached.'
-            : 'Source: UdaanPath career catalogue.'}{' '}
-          General estimates, not personalised; actual pay and costs vary by
-          employer, location and institute.
+            ? tr('cdSourceOffline')
+            : tr('cdSourceLive')}{' '}
+          {tr('cdEstimates')}
         </p>
       </section>
 
-      <div className="cd-tabs" role="tablist" aria-label="Career details">
+      <div
+        className="cd-tabs"
+        role="tablist"
+        aria-label={tr('cdCareerDetails')}
+      >
         {tabs.map((t, i) => (
           <button
             key={t}
@@ -962,7 +1032,7 @@ function Details({
             onClick={() => onTab(t)}
             onKeyDown={(e) => onKey(e, i)}
           >
-            {t}
+            {tr(tabKeys[t])}
           </button>
         ))}
       </div>
@@ -980,7 +1050,7 @@ function Details({
             <div className="cd-outlook">
               <TrendingUp size={18} aria-hidden="true" />
               <p>
-                <strong>Growth outlook</strong>
+                <strong>{tr('cdGrowth')}</strong>
                 {career.growth}
               </p>
             </div>
@@ -989,22 +1059,26 @@ function Details({
 
         {tab === 'Skills' && (
           <>
-            <p className="cd-sub">Key skills</p>
+            <p className="cd-sub">{tr('cdKeySkills')}</p>
             <ul className="cd-tags">
               {career.skills.map((s) => (
                 <li key={s}>{s}</li>
               ))}
             </ul>
-            <p className="cd-sub">Related interests</p>
+            <p className="cd-sub">{tr('cdRelatedInterests')}</p>
             <ul className="cd-tags cd-tags--soft">
               {career.interests.map((s) => (
                 <li key={s}>{s}</li>
               ))}
             </ul>
-            <p className="cd-sub">Open to streams</p>
+            <p className="cd-sub">{tr('cdOpenStreams')}</p>
             <ul className="cd-tags cd-tags--soft">
               {career.streams.map((s) => (
-                <li key={s}>{streamLabels[s] ?? s.replace(/_/g, ' ')}</li>
+                <li key={s}>
+                  {streamLabels[s]
+                    ? label(streamLabels[s])
+                    : s.replace(/_/g, ' ')}
+                </li>
               ))}
             </ul>
           </>
@@ -1012,7 +1086,7 @@ function Details({
 
         {tab === 'Pathway' && (
           <>
-            <p className="cd-sub">Typical stages · roadmap template</p>
+            <p className="cd-sub">{tr('cdStagesTitle')}</p>
             <ol className="cd-stages">
               {roadmapFor(career).map((s, i) => (
                 <li key={s.stage}>
@@ -1021,7 +1095,7 @@ function Details({
                   </span>
                   <span>
                     <strong>
-                      {s.stage} · ~{s.weeks} weeks
+                      {s.stage} · {tr('cdWeeks', { n: s.weeks })}
                     </strong>
                     {s.title}
                   </span>
@@ -1030,8 +1104,8 @@ function Details({
             </ol>
             <p className="cd-fine">
               {hasProfile
-                ? 'Open your roadmap to see the milestones generated for your profile.'
-                : 'Your own roadmap is generated from your profile, with free courses highlighted alongside certifications.'}
+                ? tr('cdPathwayHasProfile')
+                : tr('cdPathwayNoProfile')}
             </p>
           </>
         )}
@@ -1039,36 +1113,35 @@ function Details({
         {tab === 'Opportunities' && (
           <>
             <p className="cd-desc">
-              Scholarships, government schemes and apprenticeships are matched
-              to <em>you</em> — your family income, age, category, marks and
-              education — rather than to one career.
+              {tr('cdOppsIntroA')}
+              <em>{tr('cdOppsIntroEm')}</em>
+              {tr('cdOppsIntroB')}
             </p>
             <ul className="cd-facts">
               <li>
                 <GraduationCap size={18} aria-hidden="true" />
                 <span>
-                  <strong>Scholarships</strong>
-                  e.g. NSP Post Matric Scholarship
+                  <strong>{tr('cdScholarships')}</strong>
+                  {tr('cdScholarshipsEg')}
                 </span>
               </li>
               <li>
                 <Sparkles size={18} aria-hidden="true" />
                 <span>
-                  <strong>Government schemes</strong>
-                  e.g. PMKVY 4.0 skilling
+                  <strong>{tr('cdSchemes')}</strong>
+                  {tr('cdSchemesEg')}
                 </span>
               </li>
               <li>
                 <TrendingUp size={18} aria-hidden="true" />
                 <span>
-                  <strong>Apprenticeships</strong>
-                  e.g. NAPS and NATS
+                  <strong>{tr('cdApprenticeships')}</strong>
+                  {tr('cdApprenticeshipsEg')}
                 </span>
               </li>
             </ul>
             <p className="cd-fine">
-              Example programmes from the UdaanPath opportunities directory.
-              Whether you qualify is checked against your profile.
+              {tr('cdOppsNote')}
             </p>
           </>
         )}
@@ -1076,7 +1149,7 @@ function Details({
 
       {hasProfile && onOpenRoadmap && tab === 'Pathway' ? (
         <button type="button" className="cd-cta" onClick={onOpenRoadmap}>
-          View my learning roadmap
+          {tr('cdViewRoadmap')}
           <ArrowRight size={18} aria-hidden="true" />
         </button>
       ) : !hasProfile && (tab === 'Pathway' || tab === 'Opportunities') ? (
@@ -1085,7 +1158,7 @@ function Details({
           href={routes.onboarding}
           onClick={linkTo(routes.onboarding)}
         >
-          Complete your profile
+          {tr('cdCompleteProfile')}
           <ArrowRight size={18} aria-hidden="true" />
         </a>
       ) : (
@@ -1094,7 +1167,7 @@ function Details({
           className="cd-cta"
           onClick={() => onTab('Pathway')}
         >
-          Explore pathway
+          {tr('cdExplorePathway')}
           <ArrowRight size={18} aria-hidden="true" />
         </button>
       )}
@@ -1118,6 +1191,7 @@ function Suggestions({
   onSelect: (id: string) => void
 }) {
   const byInterest = picked.length > 0
+  const { tr } = useI18n()
   const list = useCatalogue()
     .filter((c) => visible[c.id] && (!byInterest || overlap[c.id] > 0))
     .sort((a, b) =>
@@ -1133,20 +1207,19 @@ function Suggestions({
         <Sparkles size={22} className="cd-panel-icon" aria-hidden="true" />
         <div>
           <h2 id="cd-suggest-title">
-            {byInterest ? 'Matches your picks' : 'Quick to start'}
+            {byInterest ? tr('cdMatchesPicks') : tr('cdQuickStart')}
           </h2>
           <p>
             {byInterest
-              ? 'From the interests you picked on this page, not your profile.'
-              : 'Shortest training first. Pick interests to personalise this.'}
+              ? tr('cdMatchesPicksText')
+              : tr('cdQuickStartText')}
           </p>
         </div>
       </div>
 
       {list.length === 0 ? (
         <p className="cd-empty">
-          <X size={16} aria-hidden="true" /> No careers match these interests
-          with your current filters.
+          <X size={16} aria-hidden="true" /> {tr('cdNoMatches')}
         </p>
       ) : (
         <ul className="cd-suggest-list">
@@ -1169,8 +1242,8 @@ function Suggestions({
                     </span>
                     <span className="cd-badge cd-badge--match">
                       {byInterest
-                        ? `Fits ${overlap[c.id]} of your picks`
-                        : `~${c.trainingMonths} months training`}
+                        ? tr('cdFitsPicks', { n: overlap[c.id] })
+                        : tr('cdMonthsTraining', { n: c.trainingMonths })}
                     </span>
                   </span>
                   <strong>{c.name}</strong>

@@ -42,7 +42,9 @@ import {
 } from './api/client'
 import CareerDiscovery from './careers/CareerDiscovery.tsx'
 import {
+  codeLabel,
   eligibilityLabel,
+  optionLabel,
   readStoredLang,
   storeLang,
   t as translate,
@@ -175,25 +177,18 @@ const topNav: { labelKey: MessageKey; view?: NavId }[] = [
   { labelKey: 'navForEducators', view: 'educators' },
 ]
 
-const infoPoints: { title: string; text: string; icon: LucideIcon }[] = [
-  {
-    title: 'Career paths that fit you',
-    text: 'Compare real careers and see how each matches your profile.',
-    icon: Compass,
-  },
-  {
-    title: 'Learning plans you can follow',
-    text: '4-stage roadmaps with free SWAYAM and NPTEL options for a career you pick.',
-    icon: BookOpen,
-  },
-  {
-    title: 'Scholarships worth exploring',
-    text: 'Schemes, scholarships and apprenticeships checked against your profile.',
-    icon: BriefcaseBusiness,
-  },
+const infoPoints: {
+  titleKey: MessageKey
+  textKey: MessageKey
+  icon: LucideIcon
+}[] = [
+  { titleKey: 'info1Title', textKey: 'pfInfo1Text', icon: Compass },
+  { titleKey: 'info2Title', textKey: 'pfInfo2Text', icon: BookOpen },
+  { titleKey: 'info3Title', textKey: 'pfInfo3Text', icon: BriefcaseBusiness },
 ]
 
-type Errors = Partial<Record<keyof FormData, string>>
+// Errors hold message keys (not text) so they follow the UI language.
+type Errors = Partial<Record<keyof FormData, MessageKey>>
 
 /** Every profile field, grouped by the step that collects it. */
 const profileFields: { key: keyof FormData; step: number }[] = [
@@ -226,49 +221,49 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  *  contact details only need to be sensible when they are filled in. */
 function validateStep(step: number, form: FormData): Errors {
   const errors: Errors = {}
-  const need = (key: keyof FormData, message: string) => {
+  const need = (key: keyof FormData, message: MessageKey) => {
     if (!String(form[key]).trim()) errors[key] = message
   }
   if (step === 0) {
     if (form.full_name.trim().length < 2) {
-      errors.full_name = 'Please enter your full name.'
+      errors.full_name = 'vFullName'
     }
     if (!form.email.trim()) {
-      errors.email = 'Please enter your email address.'
+      errors.email = 'vEmailRequired'
     } else if (!EMAIL_RE.test(form.email.trim())) {
-      errors.email = 'Please enter a valid email, like name@example.com.'
+      errors.email = 'vEmailInvalid'
     }
     if (form.phone.trim() && form.phone.replace(/\D/g, '').length < 10) {
-      errors.phone = 'Phone numbers need at least 10 digits.'
+      errors.phone = 'vPhone'
     }
     const age = Number(form.age)
     if (!form.age.trim()) {
-      errors.age = 'Please enter your age.'
+      errors.age = 'vAgeRequired'
     } else if (!Number.isInteger(age) || age < 12 || age > 60) {
-      errors.age = 'Please enter an age between 12 and 60.'
+      errors.age = 'vAgeRange'
     }
-    need('gender', 'Please choose an option.')
-    need('category', 'Please choose your category.')
-    if (form.state.trim().length < 2) errors.state = 'Please enter your state.'
+    need('gender', 'vChooseOption')
+    need('category', 'vCategory')
+    if (form.state.trim().length < 2) errors.state = 'vState'
     if (form.district.trim().length < 2) {
-      errors.district = 'Please enter your district.'
+      errors.district = 'vDistrict'
     }
   }
   if (step === 1) {
-    need('education_level', 'Please choose your highest education level.')
+    need('education_level', 'vEducation')
     const marks = Number(form.percentage_marks)
     if (!form.percentage_marks.trim()) {
-      errors.percentage_marks = 'Please enter your percentage.'
+      errors.percentage_marks = 'vPercentRequired'
     } else if (Number.isNaN(marks) || marks < 0 || marks > 100) {
-      errors.percentage_marks = 'Marks should be a percentage from 0 to 100.'
+      errors.percentage_marks = 'vPercentRange'
     }
   }
   if (step === 3) {
     const income = Number(form.annual_family_income)
     if (!form.annual_family_income.trim()) {
-      errors.annual_family_income = 'Please enter an amount (0 is fine).'
+      errors.annual_family_income = 'vIncomeRequired'
     } else if (Number.isNaN(income) || income < 0) {
-      errors.annual_family_income = 'Please enter an amount of 0 or more.'
+      errors.annual_family_income = 'vIncomeMin'
     }
   }
   return errors
@@ -665,7 +660,10 @@ function App({ route }: { route: Route }) {
     .charAt(0)
     .toUpperCase()
   const CurrentIcon = steps[step].icon
-  const err = (key: keyof FormData) => errors[key]
+  const err = (key: keyof FormData) => {
+    const message = errors[key]
+    return message ? t(message) : undefined
+  }
   void selectedCareerId
 
   return (
@@ -687,7 +685,7 @@ function App({ route }: { route: Route }) {
             <span>{error}</span>
             <button
               type="button"
-              aria-label="Dismiss message"
+              aria-label={t('dismissMessage')}
               onClick={() => setError(null)}
             >
               <X size={16} />
@@ -699,18 +697,19 @@ function App({ route }: { route: Route }) {
           <>
             <section className="hero">
               <div className="hero-copy">
-                <span className="eyebrow">YOUR STARTING POINT</span>
+                <span className="eyebrow">{t('heroEyebrow')}</span>
                 <h1>
-                  Let&apos;s build your <em>path forward.</em>
+                  {t('heroTitleA')}
+                  <em>{t('heroTitleB')}</em>
                 </h1>
-                <p>
-                  A few details help us recommend careers, learning resources
-                  and opportunities that fit you.
-                </p>
+                <p>{t('heroText')}</p>
                 {student && (
                   <p className="student-badge-pill">
-                    <Check size={14} aria-hidden="true" /> Active profile:{' '}
-                    {student.full_name} ({student.state})
+                    <Check size={14} aria-hidden="true" />{' '}
+                    {t('activeProfile', {
+                      name: student.full_name,
+                      state: optionLabel(lang, student.state),
+                    })}
                   </p>
                 )}
               </div>
@@ -731,8 +730,7 @@ function App({ route }: { route: Route }) {
 
                 {demoFilled && (
                   <p className="demo-note" role="status">
-                    Demo values are filled in. Replace them with your own
-                    details before you submit.
+                    {t('pfDemoNote')}
                   </p>
                 )}
 
@@ -755,9 +753,11 @@ function App({ route }: { route: Route }) {
 
                   {Object.keys(errors).length > 0 && (
                     <p className="form-alert" role="alert">
-                      Please check the highlighted{' '}
-                      {Object.keys(errors).length === 1 ? 'field' : 'fields'}{' '}
-                      below.
+                      {t(
+                        Object.keys(errors).length === 1
+                          ? 'pfFormAlertOne'
+                          : 'pfFormAlertMany',
+                      )}
                     </p>
                   )}
 
@@ -769,10 +769,10 @@ function App({ route }: { route: Route }) {
                             wide
                             id="field-full_name"
                             icon={UserRound}
-                            label="Full name"
+                            label={t('fullName')}
                             required
                             value={form.full_name}
-                            placeholder="Enter your full name"
+                            placeholder={t('fullNamePlaceholder')}
                             error={err('full_name')}
                             onChange={(value) =>
                               updateField('full_name', value)
@@ -782,7 +782,7 @@ function App({ route }: { route: Route }) {
                           <Field
                             id="field-email"
                             icon={Mail}
-                            label="Email address"
+                            label={t('email')}
                             required
                             type="email"
                             value={form.email}
@@ -794,7 +794,7 @@ function App({ route }: { route: Route }) {
                           <Field
                             id="field-phone"
                             icon={Phone}
-                            label="Phone number"
+                            label={t('phone')}
                             type="tel"
                             value={form.phone}
                             placeholder="+91 9876543210"
@@ -806,20 +806,21 @@ function App({ route }: { route: Route }) {
                             id="field-age"
                             required
                             icon={Calendar}
-                            label="Age"
+                            label={t('age')}
                             type="number"
                             value={form.age}
-                            placeholder="e.g. 19"
+                            placeholder={t('agePlaceholder')}
                             error={err('age')}
                             onChange={(value) => updateField('age', value)}
                           />
 
                           <SelectField
+                            lang={lang}
                             id="field-gender"
                             required
                             error={err('gender')}
                             icon={Users}
-                            label="Gender"
+                            label={t('gender')}
                             value={form.gender}
                             options={[
                               'Male',
@@ -835,9 +836,9 @@ function App({ route }: { route: Route }) {
                             required
                             error={err('state')}
                             icon={MapIcon}
-                            label="State"
+                            label={t('state')}
                             value={form.state}
-                            placeholder="e.g. Uttar Pradesh"
+                            placeholder={t('statePlaceholder')}
                             onChange={(value) => updateField('state', value)}
                           />
 
@@ -846,30 +847,32 @@ function App({ route }: { route: Route }) {
                             required
                             error={err('district')}
                             icon={MapPin}
-                            label="District"
+                            label={t('district')}
                             value={form.district}
-                            placeholder="Enter your city, town or district"
+                            placeholder={t('pfDistrictPlaceholder')}
                             onChange={(value) => updateField('district', value)}
                           />
 
                           <SelectField
+                            lang={lang}
                             id="field-location_tier"
                             icon={Building2}
-                            label="Location tier"
+                            label={t('locationTier')}
                             value={form.location_tier}
                             options={['Tier 1', 'Tier 2', 'Tier 3']}
-                            hint="This helps us show you relevant opportunities in your area."
+                            hint={t('pfLocationTierHint')}
                             onChange={(value) =>
                               updateField('location_tier', value)
                             }
                           />
 
                           <SelectField
+                            lang={lang}
                             id="field-category"
                             required
                             error={err('category')}
                             icon={Tags}
-                            label="Category"
+                            label={t('category')}
                             value={form.category}
                             options={['General', 'OBC', 'SC', 'ST', 'EWS']}
                             onChange={(value) => updateField('category', value)}
@@ -882,9 +885,10 @@ function App({ route }: { route: Route }) {
                       <div className="form-content">
                         <div className="field-grid">
                           <SelectField
+                            lang={lang}
                             id="field-education_level"
                             icon={GraduationCap}
-                            label="Highest education level"
+                            label={t('educationLevel')}
                             required
                             value={form.education_level}
                             options={[
@@ -901,9 +905,10 @@ function App({ route }: { route: Route }) {
                           />
 
                           <SelectField
+                            lang={lang}
                             id="field-stream"
                             icon={BookOpen}
-                            label="Stream"
+                            label={t('stream')}
                             value={form.stream}
                             options={[
                               'Science PCM',
@@ -921,10 +926,10 @@ function App({ route }: { route: Route }) {
                             id="field-percentage_marks"
                             required
                             icon={Percent}
-                            label="Percentage / marks"
+                            label={t('percentage')}
                             type="number"
                             value={form.percentage_marks}
-                            placeholder="e.g. 78.5"
+                            placeholder={t('percentagePlaceholder')}
                             error={err('percentage_marks')}
                             onChange={(value) =>
                               updateField('percentage_marks', value)
@@ -935,12 +940,8 @@ function App({ route }: { route: Route }) {
                         <div className="info-box">
                           <GraduationCap size={20} />
                           <div>
-                            <strong>Why do we ask this?</strong>
-                            <p>
-                              Your education level and stream help us identify
-                              careers and opportunities that match your
-                              eligibility.
-                            </p>
+                            <strong>{t('whyAskTitle')}</strong>
+                            <p>{t('pfWhyAskText')}</p>
                           </div>
                         </div>
                       </div>
@@ -949,32 +950,36 @@ function App({ route }: { route: Route }) {
                     {step === 2 && (
                       <div className="form-content">
                         <TagInput
-                          label="Skills"
-                          placeholder="e.g. Python, Excel, Communication"
+                          lang={lang}
+                          label={t('skills')}
+                          placeholder={t('skillsPlaceholder')}
                           values={form.skills}
                           onAdd={(value) => addTag('skills', value)}
                           onRemove={(value) => removeTag('skills', value)}
                         />
 
                         <TagInput
-                          label="Interests"
-                          placeholder="e.g. Technology, Solar Energy, Finance"
+                          lang={lang}
+                          label={t('interests')}
+                          placeholder={t('pfInterestsPlaceholder')}
                           values={form.interests}
                           onAdd={(value) => addTag('interests', value)}
                           onRemove={(value) => removeTag('interests', value)}
                         />
 
                         <TagInput
-                          label="Languages"
-                          placeholder="e.g. Hindi, English"
+                          lang={lang}
+                          label={t('languages')}
+                          placeholder={t('languagesPlaceholder')}
                           values={form.languages}
                           onAdd={(value) => addTag('languages', value)}
                           onRemove={(value) => removeTag('languages', value)}
                         />
 
                         <TagInput
-                          label="Career aspirations"
-                          placeholder="e.g. Data Analyst, Software Engineer"
+                          lang={lang}
+                          label={t('aspirations')}
+                          placeholder={t('pfAspirationsPlaceholder')}
                           values={form.career_aspirations}
                           onAdd={(value) => addTag('career_aspirations', value)}
                           onRemove={(value) =>
@@ -990,10 +995,10 @@ function App({ route }: { route: Route }) {
                           <Field
                             id="field-annual_family_income"
                             required
-                            label="Annual family income"
+                            label={t('income')}
                             type="number"
                             value={form.annual_family_income}
-                            placeholder="e.g. 180000"
+                            placeholder={t('incomePlaceholder')}
                             prefix="₹"
                             error={err('annual_family_income')}
                             onChange={(value) =>
@@ -1002,9 +1007,10 @@ function App({ route }: { route: Route }) {
                           />
 
                           <SelectField
+                            lang={lang}
                             id="field-financial_constraint"
                             icon={Wallet}
-                            label="Financial constraint level"
+                            label={t('financialConstraint')}
                             value={form.financial_constraint}
                             options={['Low', 'Medium', 'High']}
                             onChange={(value) =>
@@ -1015,35 +1021,26 @@ function App({ route }: { route: Route }) {
 
                         <div className="income-cards">
                           <div>
-                            <span>LOW</span>
-                            <p>Financial support is generally available.</p>
+                            <span>{t('incomeLow')}</span>
+                            <p>{t('incomeLowText')}</p>
                           </div>
 
                           <div>
-                            <span>MEDIUM</span>
-                            <p>
-                              Some financial limitations may affect choices.
-                            </p>
+                            <span>{t('incomeMedium')}</span>
+                            <p>{t('incomeMediumText')}</p>
                           </div>
 
                           <div>
-                            <span>HIGH</span>
-                            <p>
-                              Cost-effective paths and financial aid are
-                              important.
-                            </p>
+                            <span>{t('incomeHigh')}</span>
+                            <p>{t('pfIncomeHighText')}</p>
                           </div>
                         </div>
 
                         <div className="info-box">
                           <Wallet size={20} />
                           <div>
-                            <strong>Your information matters</strong>
-                            <p>
-                              This information helps UdaanPath prioritize
-                              affordable education, scholarships, schemes and
-                              low-barrier career paths.
-                            </p>
+                            <strong>{t('mattersTitle')}</strong>
+                            <p>{t('pfMattersText')}</p>
                           </div>
                         </div>
                       </div>
@@ -1057,18 +1054,18 @@ function App({ route }: { route: Route }) {
                         onClick={previousStep}
                       >
                         <ArrowLeft size={18} />
-                        Back
+                        {t('back')}
                       </button>
                     ) : (
                       <span className="draft-note">
                         <Check size={15} aria-hidden="true" />
-                        Your answers stay in this tab as you go.
+                        {t('pfDraftNote')}
                       </span>
                     )}
 
                     {step < steps.length - 1 ? (
                       <button className="primary-button" onClick={nextStep}>
-                        Save &amp; Continue
+                        {t('saveContinue')}
                         <ArrowRight size={18} />
                       </button>
                     ) : (
@@ -1080,11 +1077,11 @@ function App({ route }: { route: Route }) {
                         {loading ? (
                           <>
                             <Loader2 size={18} className="animate-spin" />
-                            Saving…
+                            {t('saving')}
                           </>
                         ) : (
                           <>
-                            Complete profile
+                            {t('completeProfile')}
                             <Check size={18} />
                           </>
                         )}
@@ -1100,27 +1097,26 @@ function App({ route }: { route: Route }) {
                 <div className="info-copy">
                   <span className="info-rule" />
                   <h2>
-                    Every path
+                    {t('infoTitle1')}
                     <br />
-                    starts <em>somewhere</em>
+                    {t('infoTitle2Pre')}
+                    <em>{t('infoTitle2Em')}</em>
+                    {t('infoTitle2Post')}
                   </h2>
-                  <p>
-                    Your profile is the starting point for career, learning and
-                    scholarship guidance on UdaanPath.
-                  </p>
+                  <p>{t('pfInfoText')}</p>
                 </div>
 
                 <ProfileProgress completion={completion} lang={lang} />
 
                 <ul className="info-list">
-                  {infoPoints.map(({ title, text, icon: Icon }) => (
-                    <li key={title}>
+                  {infoPoints.map(({ titleKey, textKey, icon: Icon }) => (
+                    <li key={titleKey}>
                       <span className="info-icon">
                         <Icon size={22} strokeWidth={1.6} />
                       </span>
                       <div>
-                        <strong>{title}</strong>
-                        <p>{text}</p>
+                        <strong>{t(titleKey)}</strong>
+                        <p>{t(textKey)}</p>
                       </div>
                     </li>
                   ))}
@@ -1135,6 +1131,7 @@ function App({ route }: { route: Route }) {
             recommendations={careers}
             hasProfile={Boolean(student?.id)}
             onOpenRoadmap={handleSelectCareerForRoadmap}
+            lang={lang}
           />
         )}
 
@@ -1220,7 +1217,7 @@ function App({ route }: { route: Route }) {
                       <div className="milestone-header">
                         <div>
                           <span className="milestone-stage-tag">
-                            {milestone.stage}
+                            {codeLabel(lang, milestone.stage)}
                           </span>
 
                           <h3 className="milestone-title">
@@ -1393,10 +1390,7 @@ function App({ route }: { route: Route }) {
                         <div className="item-card-header">
                           <div>
                             <span className="category-tag">
-                              {opp.type.replace(
-                                /_/g,
-                                ' ',
-                              )}
+                              {codeLabel(lang, opp.type)}
                             </span>
 
                             <h3 className="item-card-title">
@@ -1427,7 +1421,7 @@ function App({ route }: { route: Route }) {
 
                           <span>
                             {t('verifiedBy', {
-                              value: opp.verified_by,
+                              value: codeLabel(lang, opp.verified_by),
                             })}
                           </span>
                         </div>
@@ -1770,15 +1764,23 @@ function JourneyPath({
   const trail = step / (steps.length - 1)
 
   return (
-    <section className="journey-card" aria-label="Profile progress">
+    <section
+      className="journey-card"
+      aria-label={translate(lang, 'ariaProfileProgress')}
+    >
       <div className="journey-head">
-        <span className="journey-kicker">Your journey</span>
+        <span className="journey-kicker">
+          {translate(lang, 'pfJourneyKicker')}
+        </span>
         <span className="journey-tools">
           <button type="button" className="demo-button" onClick={onDemo}>
-            Fill demo profile
+            {translate(lang, 'pfFillDemo')}
           </button>
           <span className="stepper-count">
-            Step {step + 1} of {steps.length}
+            {translate(lang, 'stepCount', {
+              step: step + 1,
+              total: steps.length,
+            })}
           </span>
         </span>
       </div>
@@ -1834,13 +1836,16 @@ function JourneyPath({
                   onClick={() => onGo(index)}
                   disabled={!reachable}
                   aria-current={index === step ? 'step' : undefined}
-                  aria-label={`Step ${index + 1}: ${translate(lang, item.titleKey)}${
+                  aria-label={`${translate(lang, 'pfStepAria', {
+                    n: index + 1,
+                    title: translate(lang, item.titleKey),
+                  })}${
                     state === 'completed'
-                      ? ', done'
+                      ? translate(lang, 'pfStepDone')
                       : state === 'active'
-                        ? ', current step'
+                        ? translate(lang, 'pfStepCurrent')
                         : state === 'upcoming'
-                          ? ', not reached yet'
+                          ? translate(lang, 'pfStepUpcoming')
                           : ''
                   }`}
                 >
@@ -1849,7 +1854,7 @@ function JourneyPath({
                 <span className="journey-label">
                   <strong>{translate(lang, item.titleKey)}</strong>
                   <small>
-                    {filled}/{total} filled
+                    {translate(lang, 'pfStepFilled', { filled, total })}
                   </small>
                 </span>
               </li>
@@ -1895,10 +1900,13 @@ function ProfileProgress({
         <div>
           <h3 id="progress-title">
             <span className="progress-number">{completion.percent}%</span>{' '}
-            complete
+            {translate(lang, 'pfProgressComplete')}
           </h3>
           <p>
-            {completion.filled} of {completion.total} details added
+            {translate(lang, 'pfProgressDetails', {
+              filled: completion.filled,
+              total: completion.total,
+            })}
           </p>
         </div>
       </div>
@@ -1911,7 +1919,9 @@ function ProfileProgress({
               <span
                 className="progress-bar"
                 role="progressbar"
-                aria-label={`${translate(lang, s.titleKey)} details`}
+                aria-label={translate(lang, 'pfProgressStepAria', {
+                  title: translate(lang, s.titleKey),
+                })}
                 aria-valuemin={0}
                 aria-valuemax={total}
                 aria-valuenow={filled}
@@ -2163,6 +2173,7 @@ function Field({
 }
 
 type SelectProps = {
+  lang: Lang
   id?: string
   error?: string
   label: string
@@ -2175,6 +2186,7 @@ type SelectProps = {
 }
 
 function SelectField({
+  lang,
   id,
   error,
   label,
@@ -2206,11 +2218,15 @@ function SelectField({
           aria-describedby={error && id ? `${id}-error` : undefined}
           onChange={(event) => onChange(event.target.value)}
         >
-          <option value="">Select {label.toLowerCase()}</option>
+          <option value="">
+            {translate(lang, 'selectPrompt', {
+              label: lang === 'en' ? label.toLowerCase() : label,
+            })}
+          </option>
 
           {options.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {optionLabel(lang, option)}
             </option>
           ))}
         </select>
@@ -2230,6 +2246,7 @@ function SelectField({
 }
 
 type TagInputProps = {
+  lang: Lang
   label: string
   placeholder: string
   values: string[]
@@ -2238,6 +2255,7 @@ type TagInputProps = {
 }
 
 function TagInput({
+  lang,
   label,
   placeholder,
   values,
@@ -2272,16 +2290,22 @@ function TagInput({
 
         <button type="button" onClick={handleAdd}>
           <Plus size={18} />
-          Add
+          {translate(lang, 'addTag')}
         </button>
       </div>
 
       <div className="tags">
         {values.map((value) => (
           <span className="tag" key={value}>
-            {value}
+            {optionLabel(lang, value)}
 
-            <button type="button" onClick={() => onRemove(value)}>
+            <button
+              type="button"
+              aria-label={translate(lang, 'removeItem', {
+                value: optionLabel(lang, value),
+              })}
+              onClick={() => onRemove(value)}
+            >
               <X size={13} />
             </button>
           </span>
