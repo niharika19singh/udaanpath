@@ -34,6 +34,7 @@ import type { LucideIcon } from 'lucide-react'
 import { HeroScene, JourneyScene, LogoMark, SidebarScene } from './ProfileArt'
 import {
   api,
+  setAccessKey,
   type StudentProfileData,
   type CareerItem,
   type OpportunityMatchItem,
@@ -290,6 +291,8 @@ const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 const STUDENT_KEY = 'udaanpath.studentId'
+/** The profile's access key, kept beside its id for this tab only. */
+const ACCESS_KEY = 'udaanpath.studentKey'
 
 // Backend enum values for the form's display options (from origin/main).
 const mapEducationLevel = (val: string): string => {
@@ -347,6 +350,61 @@ const toPayload = (form: FormData): StudentProfileData => ({
   languages: form.languages,
   career_aspirations: form.career_aspirations,
 })
+
+/** Fills the form from a saved profile (the reverse of toPayload). A few
+ *  choices map to the same stored value, e.g. "Computer Science" is saved as
+ *  PCM, so those come back as their closest option. */
+const fromProfile = (p: StudentProfileData): FormData => {
+  const pick = (map: Record<string, string>, v?: string) =>
+    (v && map[v]) || ''
+  return {
+    full_name: p.full_name ?? '',
+    email: p.email ?? '',
+    phone: p.phone ?? '',
+    age: p.age != null ? String(p.age) : '',
+    gender: pick({ male: 'Male', female: 'Female', other: 'Other' }, p.gender),
+    category: p.category ?? '',
+    state: p.state ?? '',
+    district: p.district ?? '',
+    location_tier: pick(
+      { tier_1: 'Tier 1', tier_2: 'Tier 2', tier_3: 'Tier 3' },
+      p.location_tier,
+    ),
+    education_level: pick(
+      {
+        '10th_pass': '10th pass',
+        '12th_pass': '12th pass',
+        iti_diploma: 'Diploma',
+        undergraduate: 'Undergraduate',
+        postgraduate: 'Postgraduate',
+      },
+      p.education_level,
+    ),
+    stream: pick(
+      {
+        science_pcm: 'Science PCM',
+        science_pcb: 'Science PCB',
+        commerce: 'Commerce',
+        arts_humanities: 'Arts / Humanities',
+        vocational: 'Vocational',
+        general: 'Other',
+      },
+      p.stream,
+    ),
+    percentage_marks:
+      p.percentage_marks != null ? String(p.percentage_marks) : '',
+    skills: p.skills ?? [],
+    interests: p.interests ?? [],
+    languages: p.languages ?? [],
+    career_aspirations: p.career_aspirations ?? [],
+    annual_family_income:
+      p.annual_family_income != null ? String(p.annual_family_income) : '',
+    financial_constraint: pick(
+      { low: 'Low', moderate: 'Medium', high: 'High', extreme: 'High' },
+      p.financial_constraint,
+    ),
+  }
+}
 
 function App({ route }: { route: Route }) {
   const [draft] = useState(readDraft)
@@ -413,30 +471,45 @@ function App({ route }: { route: Route }) {
       setSelectedCareerId(topCareer.career_id)
       const p = await api.generatePathway(id, topCareer.career_id)
       setPathway(p)
+    } else {
+      // An edited profile may no longer match any career; drop the old roadmap.
+      setSelectedCareerId(null)
+      setPathway(null)
     }
   }
 
   // Restores the profile this tab submitted earlier (no demo auto-load).
   useEffect(() => {
     let raw: string | null
+    let key: string | null
     try {
       raw = window.sessionStorage.getItem(STUDENT_KEY)
+      key = window.sessionStorage.getItem(ACCESS_KEY)
     } catch {
       return
     }
     const id = Number(raw)
-    if (!raw || !id) return
+    // Without its key the profile cannot be opened, so start fresh.
+    if (!raw || !id || !key) return
+    setAccessKey(key)
     const restore = async () => {
       try {
         const saved = await api.getProfile(id)
         setStudent(saved)
+        // Unsaved edits in this tab's draft win; otherwise show the saved
+        // profile so it can be edited.
+        if (!draft) {
+          setForm(fromProfile(saved))
+          setMaxReached(steps.length - 1)
+        }
         await loadStudentData(id)
       } catch {
         // Backend unavailable or the profile no longer exists.
       }
     }
     restore()
-  }, [])
+    // draft is read once at mount and never changes, so this still runs once.
+  }, [draft])
 
   useEffect(() => {
     try {
@@ -586,15 +659,31 @@ function App({ route }: { route: Route }) {
     setErrors({})
 
     try {
-      const created = await api.createProfile(toPayload(form))
-      setStudent(created)
-      if (created.id) {
+      const payload = toPayload(form)
+      // After the first submit, edits update the same profile (PUT) rather
+      // than creating a new one, which the duplicate-email check rejects.
+      // A cleared phone number is sent as '' so the old one is removed.
+      const saved = student?.id
+        ? await api.updateProfile(student.id, {
+            ...payload,
+            phone: form.phone.trim(),
+          })
+        : await api.createProfile(payload)
+      // A new profile comes with its access key; later requests need it.
+      const issuedKey = (saved as { access_key?: string }).access_key ?? null
+      if (issuedKey) setAccessKey(issuedKey)
+      setStudent(saved)
+      if (saved.id) {
         try {
-          window.sessionStorage.setItem(STUDENT_KEY, String(created.id))
+          window.sessionStorage.setItem(STUDENT_KEY, String(saved.id))
+          if (issuedKey) window.sessionStorage.setItem(ACCESS_KEY, issuedKey)
+          // The saved profile is now the source of truth for the form.
+          window.sessionStorage.removeItem(DRAFT_KEY)
         } catch {
           /* storage unavailable: the profile stays loaded for this visit */
         }
-        await loadStudentData(created.id)
+        // Recompute matches, opportunities and the top roadmap.
+        await loadStudentData(saved.id)
       }
       setDemoFilled(false)
       selectNav('careers')
@@ -1081,7 +1170,9 @@ function App({ route }: { route: Route }) {
                           </>
                         ) : (
                           <>
-                            {t('completeProfile')}
+                            {student?.id
+                              ? t('pfSaveChanges')
+                              : t('completeProfile')}
                             <Check size={18} />
                           </>
                         )}
@@ -1488,7 +1579,7 @@ function App({ route }: { route: Route }) {
               </div>
 
               <span className="student-badge-pill">
-                <Sparkles size={16} /> {t('advisorBadge')}
+                <Compass size={16} /> {t('advisorBadge')}
               </span>
             </div>
 
@@ -1512,6 +1603,25 @@ function App({ route }: { route: Route }) {
                 {t('advisorAskText')}
               </p>
 
+              {!student && (
+                <div className="empty-view" role="status">
+                  <UserRound
+                    size={40}
+                    style={{ margin: '0 auto 12px', color: '#16866a' }}
+                  />
+                  <h3>{t('advisorNoProfileTitle')}</h3>
+                  <p>{t('advisorNoProfileText')}</p>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    style={{ marginTop: '16px' }}
+                    onClick={() => selectNav('profile')}
+                  >
+                    {t('completeProfileBtn')}
+                  </button>
+                </div>
+              )}
+
               <div className="prompt-chips">
                 {[
                   t('advisorPrompt1'),
@@ -1523,6 +1633,7 @@ function App({ route }: { route: Route }) {
                     key={promptText}
                     type="button"
                     className="prompt-chip"
+                    disabled={!student || advisorLoading}
                     onClick={() => {
                       setAdvisorQuery(promptText)
                       handleAskAdvisor(promptText)
@@ -1537,6 +1648,7 @@ function App({ route }: { route: Route }) {
                 <input
                   type="text"
                   placeholder={t('advisorPlaceholder')}
+                  disabled={!student}
                   value={advisorQuery}
                   onChange={(e) =>
                     setAdvisorQuery(e.target.value)
@@ -1552,6 +1664,7 @@ function App({ route }: { route: Route }) {
                   type="button"
                   className="primary-button"
                   disabled={
+                    !student ||
                     advisorLoading ||
                     !advisorQuery.trim()
                   }
@@ -1599,9 +1712,10 @@ function App({ route }: { route: Route }) {
                         fontWeight: 600,
                       }}
                     >
-                      {t('advisorProvider', {
-                        value: advisorResult.provider,
-                      })}
+                      {advisorResult.is_ai_generated &&
+                      advisorResult.provider === 'gemini'
+                        ? t('advisorSourceAi')
+                        : t('advisorSourceRules')}
                     </span>
                   </div>
 
