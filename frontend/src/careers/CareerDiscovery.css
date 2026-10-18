@@ -18,7 +18,7 @@
   --cd-line-strong: rgba(140, 255, 190, 0.3);
   --cd-ink: #eafff2;
   --cd-muted: #a3c4b2;
-  --cd-faint: #6f9483;
+  --cd-faint: #8fb3a2;
   --cd-mint: #6be7b2;
   --cd-emerald: #3ee88a;
 
@@ -100,6 +100,9 @@
     'suggest interests filters';
   gap: 24px;
   padding: 22px 28px 40px;
+  /* Text that sets no colour of its own (page heading, "Your picks") must
+     not inherit the light portal's dark ink. */
+  color: var(--cd-ink);
 }
 
 .cd :focus-visible {
