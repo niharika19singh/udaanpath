@@ -149,6 +149,8 @@ const infoPoints: { title: string; text: string; icon: LucideIcon }[] = [
   },
 ]
 
+type FieldErrors = Partial<Record<keyof FormData, string>>
+
 function App() {
   const [activeNav, setActiveNav] = useState<NavId>('profile')
   const [step, setStep] = useState(0)
@@ -161,6 +163,7 @@ function App() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
   // AI Advisor state
   const [advisorQuery, setAdvisorQuery] = useState('')
@@ -182,7 +185,10 @@ function App() {
           setOpportunities(oppRes.opportunities || [])
           if (recRes.recommendations.length > 0) {
             setSelectedCareerId(recRes.recommendations[0].career_id)
-            const pathRes = await api.generatePathway(demoStudent.id, recRes.recommendations[0].career_id)
+            const pathRes = await api.generatePathway(
+              demoStudent.id,
+              recRes.recommendations[0].career_id,
+            )
             setPathway(pathRes)
           }
         }
@@ -198,6 +204,15 @@ function App() {
       ...current,
       [field]: value,
     }))
+
+    // Remove the error for this field as soon as the user starts fixing it.
+    setFieldErrors((current) => {
+      if (!current[field]) return current
+
+      const updated = { ...current }
+      delete updated[field]
+      return updated
+    })
   }
 
   const addTag = (
@@ -222,7 +237,65 @@ function App() {
     }))
   }
 
+  // Validate only the fields required for the current step.
+  const validateStep = (currentStep: number): boolean => {
+    const errors: FieldErrors = {}
+
+    if (currentStep === 0) {
+      if (!form.full_name.trim()) {
+        errors.full_name = 'Full name is required.'
+      }
+
+      if (!form.email.trim()) {
+        errors.email = 'Email address is required.'
+      } else if (
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+      ) {
+        errors.email = 'Please enter a valid email address.'
+      }
+    }
+
+    if (currentStep === 1) {
+      if (!form.education_level.trim()) {
+        errors.education_level = 'Highest education level is required.'
+      }
+    }
+
+    setFieldErrors(errors)
+
+    return Object.keys(errors).length === 0
+  }
+
+  // Validate all required fields before final submission.
+  const validateAllFields = (): boolean => {
+    const errors: FieldErrors = {}
+
+    if (!form.full_name.trim()) {
+      errors.full_name = 'Full name is required.'
+    }
+
+    if (!form.email.trim()) {
+      errors.email = 'Email address is required.'
+    } else if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+    ) {
+      errors.email = 'Please enter a valid email address.'
+    }
+
+    if (!form.education_level.trim()) {
+      errors.education_level = 'Highest education level is required.'
+    }
+
+    setFieldErrors(errors)
+
+    return Object.keys(errors).length === 0
+  }
+
   const nextStep = () => {
+    if (!validateStep(step)) {
+      return
+    }
+
     if (step < steps.length - 1) {
       setStep((current) => current + 1)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -231,6 +304,7 @@ function App() {
 
   const previousStep = () => {
     if (step > 0) {
+      setFieldErrors({})
       setStep((current) => current - 1)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
@@ -240,9 +314,9 @@ function App() {
     const map: Record<string, string> = {
       '10th pass': '10th_pass',
       '12th pass': '12th_pass',
-      'Diploma': 'iti_diploma',
-      'Undergraduate': 'undergraduate',
-      'Postgraduate': 'postgraduate',
+      Diploma: 'iti_diploma',
+      Undergraduate: 'undergraduate',
+      Postgraduate: 'postgraduate',
     }
     return map[val] || '12th_pass'
   }
@@ -251,37 +325,58 @@ function App() {
     const map: Record<string, string> = {
       'Science PCM': 'science_pcm',
       'Science PCB': 'science_pcb',
-      'Commerce': 'commerce',
+      Commerce: 'commerce',
       'Arts / Humanities': 'arts_humanities',
       'Computer Science': 'science_pcm',
-      'Vocational': 'vocational',
+      Vocational: 'vocational',
     }
     return map[val] || 'general'
   }
 
   const handleSubmit = async () => {
+    // Do not submit anything if required fields are missing.
+    if (!validateAllFields()) {
+      setStep(0)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     const payload: StudentProfileData = {
-      full_name: form.full_name.trim() || 'Student',
-      email: form.email.trim() || `student_${Date.now()}@example.com`,
+      full_name: form.full_name.trim(),
+      email: form.email.trim(),
       phone: form.phone.trim() || undefined,
       age: parseInt(form.age, 10) || 19,
-      gender: form.gender.toLowerCase() === 'female' ? 'female' : 'male',
-      category: ['General', 'OBC', 'SC', 'ST', 'EWS'].includes(form.category) ? form.category : 'General',
+      gender:
+        form.gender.toLowerCase() === 'female' ? 'female' : 'male',
+      category: ['General', 'OBC', 'SC', 'ST', 'EWS'].includes(form.category)
+        ? form.category
+        : 'General',
       state: form.state.trim() || 'Uttar Pradesh',
       district: form.district.trim() || 'Varanasi',
-      location_tier: form.location_tier.toLowerCase().replace(' ', '_') || 'tier_2',
-      annual_family_income: parseFloat(form.annual_family_income) || 180000,
-      financial_constraint: form.financial_constraint.toLowerCase() === 'medium' ? 'moderate' : form.financial_constraint.toLowerCase() || 'moderate',
+      location_tier:
+        form.location_tier.toLowerCase().replace(' ', '_') || 'tier_2',
+      annual_family_income:
+        parseFloat(form.annual_family_income) || 180000,
+      financial_constraint:
+        form.financial_constraint.toLowerCase() === 'medium'
+          ? 'moderate'
+          : form.financial_constraint.toLowerCase() || 'moderate',
       education_level: mapEducationLevel(form.education_level),
       stream: mapStream(form.stream),
       percentage_marks: parseFloat(form.percentage_marks) || 75.0,
-      skills: form.skills.length > 0 ? form.skills : ['Basic Computers'],
-      interests: form.interests.length > 0 ? form.interests : ['Technology'],
-      languages: form.languages.length > 0 ? form.languages : ['Hindi', 'English'],
-      career_aspirations: form.career_aspirations.length > 0 ? form.career_aspirations : ['Specialist'],
+      skills:
+        form.skills.length > 0 ? form.skills : ['Basic Computers'],
+      interests:
+        form.interests.length > 0 ? form.interests : ['Technology'],
+      languages:
+        form.languages.length > 0 ? form.languages : ['Hindi', 'English'],
+      career_aspirations:
+        form.career_aspirations.length > 0
+          ? form.career_aspirations
+          : ['Specialist'],
     }
 
     try {
@@ -294,13 +389,19 @@ function App() {
           api.getRecommendations(created.id, 6),
           api.matchOpportunities(created.id, 6),
         ])
+
         setCareers(recs.recommendations || [])
         setOpportunities(opps.opportunities || [])
 
         if (recs.recommendations.length > 0) {
           const topCareer = recs.recommendations[0]
           setSelectedCareerId(topCareer.career_id)
-          const p = await api.generatePathway(created.id, topCareer.career_id)
+
+          const p = await api.generatePathway(
+            created.id,
+            topCareer.career_id,
+          )
+
           setPathway(p)
         }
       }
@@ -317,10 +418,14 @@ function App() {
 
   const handleSelectCareerForRoadmap = async (careerId: number) => {
     if (!student?.id) return
+
     setLoading(true)
+
     try {
       setSelectedCareerId(careerId)
+
       const p = await api.generatePathway(student.id, careerId)
+
       setPathway(p)
       setActiveNav('pathways')
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -331,15 +436,26 @@ function App() {
     }
   }
 
-  const handleToggleMilestone = async (milestoneId: number, currentStatus: string) => {
-    const newStatus = currentStatus === 'completed' ? 'in_progress' : 'completed'
+  const handleToggleMilestone = async (
+    milestoneId: number,
+    currentStatus: string,
+  ) => {
+    const newStatus =
+      currentStatus === 'completed' ? 'in_progress' : 'completed'
+
     try {
-      const updated = await api.updateMilestoneStatus(milestoneId, newStatus)
+      const updated = await api.updateMilestoneStatus(
+        milestoneId,
+        newStatus,
+      )
+
       if (pathway) {
         setPathway({
           ...pathway,
           milestones: pathway.milestones.map((m) =>
-            m.id === milestoneId ? { ...m, status: updated.status } : m
+            m.id === milestoneId
+              ? { ...m, status: updated.status }
+              : m,
           ),
         })
       }
@@ -350,8 +466,10 @@ function App() {
 
   const handleAskAdvisor = async (queryText: string) => {
     if (!student?.id || !queryText.trim()) return
+
     setAdvisorLoading(true)
     setError(null)
+
     try {
       const res = await api.askAiAdvisor(student.id, queryText)
       setAdvisorResult(res)
@@ -362,7 +480,15 @@ function App() {
     }
   }
 
-  const initial = (student?.full_name || form.full_name || 'U').trim().charAt(0).toUpperCase()
+  const initial = (
+    student?.full_name ||
+    form.full_name ||
+    'U'
+  )
+    .trim()
+    .charAt(0)
+    .toUpperCase()
+
   const CurrentIcon = steps[step].icon
 
   return (
@@ -387,8 +513,13 @@ function App() {
             }}
           >
             <span>{error}</span>
+
             <button
-              style={{ background: 'none', border: 'none', color: '#c53030' }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#c53030',
+              }}
               onClick={() => setError(null)}
             >
               <X size={16} />
@@ -402,27 +533,35 @@ function App() {
             <section className="hero">
               <div className="hero-copy">
                 <span className="eyebrow">YOUR STARTING POINT</span>
+
                 <h1>
                   Let&apos;s build your <em>path forward.</em>
                 </h1>
+
                 <p>
-                  A few details help us recommend careers, learning resources and
-                  opportunities that fit you.
+                  A few details help us recommend careers, learning resources
+                  and opportunities that fit you.
                 </p>
+
                 {student && (
                   <div style={{ marginTop: '16px' }}>
                     <span className="student-badge-pill">
-                      <Check size={14} /> Active Profile: {student.full_name} ({student.state})
+                      <Check size={14} /> Active Profile: {student.full_name}{' '}
+                      ({student.state})
                     </span>
                   </div>
                 )}
               </div>
+
               <HeroScene />
             </section>
 
             <div className="content-grid">
               <div className="content-col">
-                <section className="stepper-card" aria-label="Profile progress">
+                <section
+                  className="stepper-card"
+                  aria-label="Profile progress"
+                >
                   <ol className="stepper">
                     {steps.map((item, index) => (
                       <li
@@ -430,15 +569,25 @@ function App() {
                         className={`stepper-item ${
                           index === step ? 'active' : ''
                         } ${index < step ? 'completed' : ''}`}
-                        aria-current={index === step ? 'step' : undefined}
+                        aria-current={
+                          index === step ? 'step' : undefined
+                        }
                       >
                         <span className="stepper-dot">
-                          {index < step ? <Check size={16} /> : index + 1}
+                          {index < step ? (
+                            <Check size={16} />
+                          ) : (
+                            index + 1
+                          )}
                         </span>
-                        <span className="stepper-label">{item.title}</span>
+
+                        <span className="stepper-label">
+                          {item.title}
+                        </span>
                       </li>
                     ))}
                   </ol>
+
                   <span className="stepper-count">
                     Step {step + 1} of {steps.length}
                   </span>
@@ -449,6 +598,7 @@ function App() {
                     <div className="heading-icon">
                       <CurrentIcon size={24} />
                     </div>
+
                     <div>
                       <h2>{steps[step].title}</h2>
                       <p>{steps[step].subtitle}</p>
@@ -465,8 +615,12 @@ function App() {
                           required
                           value={form.full_name}
                           placeholder="Enter your full name"
-                          onChange={(value) => updateField('full_name', value)}
+                          error={fieldErrors.full_name}
+                          onChange={(value) =>
+                            updateField('full_name', value)
+                          }
                         />
+
                         <Field
                           icon={Mail}
                           label="Email address"
@@ -474,58 +628,88 @@ function App() {
                           type="email"
                           value={form.email}
                           placeholder="you@example.com"
-                          onChange={(value) => updateField('email', value)}
+                          error={fieldErrors.email}
+                          onChange={(value) =>
+                            updateField('email', value)
+                          }
                         />
+
                         <Field
                           icon={Phone}
                           label="Phone number"
                           value={form.phone}
                           placeholder="+91 9876543210"
-                          onChange={(value) => updateField('phone', value)}
+                          onChange={(value) =>
+                            updateField('phone', value)
+                          }
                         />
+
                         <Field
                           icon={Calendar}
                           label="Age"
                           type="number"
                           value={form.age}
                           placeholder="e.g. 19"
-                          onChange={(value) => updateField('age', value)}
+                          onChange={(value) =>
+                            updateField('age', value)
+                          }
                         />
+
                         <SelectField
                           icon={Users}
                           label="Gender"
                           value={form.gender}
                           options={['Male', 'Female', 'Other']}
-                          onChange={(value) => updateField('gender', value)}
+                          onChange={(value) =>
+                            updateField('gender', value)
+                          }
                         />
+
                         <Field
                           icon={MapIcon}
                           label="State"
                           value={form.state}
                           placeholder="e.g. Uttar Pradesh"
-                          onChange={(value) => updateField('state', value)}
+                          onChange={(value) =>
+                            updateField('state', value)
+                          }
                         />
+
                         <Field
                           icon={MapPin}
                           label="District"
                           value={form.district}
                           placeholder="Enter your city or district"
-                          onChange={(value) => updateField('district', value)}
+                          onChange={(value) =>
+                            updateField('district', value)
+                          }
                         />
+
                         <SelectField
                           icon={Building2}
                           label="Location tier"
                           value={form.location_tier}
                           options={['Tier 1', 'Tier 2', 'Tier 3']}
                           hint="Helps prioritize regional opportunities."
-                          onChange={(value) => updateField('location_tier', value)}
+                          onChange={(value) =>
+                            updateField('location_tier', value)
+                          }
                         />
+
                         <SelectField
                           icon={Tags}
                           label="Category"
                           value={form.category}
-                          options={['General', 'OBC', 'SC', 'ST', 'EWS']}
-                          onChange={(value) => updateField('category', value)}
+                          options={[
+                            'General',
+                            'OBC',
+                            'SC',
+                            'ST',
+                            'EWS',
+                          ]}
+                          onChange={(value) =>
+                            updateField('category', value)
+                          }
                         />
                       </div>
                     </div>
@@ -546,8 +730,12 @@ function App() {
                             'Undergraduate',
                             'Postgraduate',
                           ]}
-                          onChange={(value) => updateField('education_level', value)}
+                          error={fieldErrors.education_level}
+                          onChange={(value) =>
+                            updateField('education_level', value)
+                          }
                         />
+
                         <SelectField
                           icon={BookOpen}
                           label="Stream"
@@ -560,24 +748,33 @@ function App() {
                             'Computer Science',
                             'Vocational',
                           ]}
-                          onChange={(value) => updateField('stream', value)}
+                          onChange={(value) =>
+                            updateField('stream', value)
+                          }
                         />
+
                         <Field
                           icon={Percent}
                           label="Percentage / marks"
                           type="number"
                           value={form.percentage_marks}
                           placeholder="e.g. 78.5"
-                          onChange={(value) => updateField('percentage_marks', value)}
+                          onChange={(value) =>
+                            updateField('percentage_marks', value)
+                          }
                         />
                       </div>
+
                       <div className="info-box">
                         <GraduationCap size={20} />
+
                         <div>
                           <strong>Why do we ask this?</strong>
+
                           <p>
                             Your education level and stream help us identify
-                            careers and government scholarships you qualify for.
+                            careers and government scholarships you qualify
+                            for.
                           </p>
                         </div>
                       </div>
@@ -590,29 +787,48 @@ function App() {
                         label="Skills"
                         placeholder="e.g. Python, Excel, Communication"
                         values={form.skills}
-                        onAdd={(value) => addTag('skills', value)}
-                        onRemove={(value) => removeTag('skills', value)}
+                        onAdd={(value) =>
+                          addTag('skills', value)
+                        }
+                        onRemove={(value) =>
+                          removeTag('skills', value)
+                        }
                       />
+
                       <TagInput
                         label="Interests"
                         placeholder="e.g. Technology, Solar Energy, Healthcare"
                         values={form.interests}
-                        onAdd={(value) => addTag('interests', value)}
-                        onRemove={(value) => removeTag('interests', value)}
+                        onAdd={(value) =>
+                          addTag('interests', value)
+                        }
+                        onRemove={(value) =>
+                          removeTag('interests', value)
+                        }
                       />
+
                       <TagInput
                         label="Languages"
                         placeholder="e.g. Hindi, English"
                         values={form.languages}
-                        onAdd={(value) => addTag('languages', value)}
-                        onRemove={(value) => removeTag('languages', value)}
+                        onAdd={(value) =>
+                          addTag('languages', value)
+                        }
+                        onRemove={(value) =>
+                          removeTag('languages', value)
+                        }
                       />
+
                       <TagInput
                         label="Career aspirations"
                         placeholder="e.g. Technician, Analyst, Public Service"
                         values={form.career_aspirations}
-                        onAdd={(value) => addTag('career_aspirations', value)}
-                        onRemove={(value) => removeTag('career_aspirations', value)}
+                        onAdd={(value) =>
+                          addTag('career_aspirations', value)
+                        }
+                        onRemove={(value) =>
+                          removeTag('career_aspirations', value)
+                        }
                       />
                     </div>
                   )}
@@ -626,37 +842,62 @@ function App() {
                           value={form.annual_family_income}
                           placeholder="e.g. 180000"
                           prefix="₹"
-                          onChange={(value) => updateField('annual_family_income', value)}
+                          onChange={(value) =>
+                            updateField(
+                              'annual_family_income',
+                              value,
+                            )
+                          }
                         />
+
                         <SelectField
                           icon={Wallet}
                           label="Financial constraint level"
                           value={form.financial_constraint}
                           options={['Low', 'Medium', 'High']}
-                          onChange={(value) => updateField('financial_constraint', value)}
+                          onChange={(value) =>
+                            updateField(
+                              'financial_constraint',
+                              value,
+                            )
+                          }
                         />
                       </div>
+
                       <div className="income-cards">
                         <div>
                           <span>LOW</span>
-                          <p>Financial support is generally available.</p>
+                          <p>
+                            Financial support is generally available.
+                          </p>
                         </div>
+
                         <div>
                           <span>MEDIUM</span>
-                          <p>Some financial limitations may affect choices.</p>
+                          <p>
+                            Some financial limitations may affect choices.
+                          </p>
                         </div>
+
                         <div>
                           <span>HIGH</span>
-                          <p>Cost-effective paths and financial aid are critical.</p>
+                          <p>
+                            Cost-effective paths and financial aid are
+                            critical.
+                          </p>
                         </div>
                       </div>
+
                       <div className="info-box">
                         <Wallet size={20} />
+
                         <div>
                           <strong>Your information matters</strong>
+
                           <p>
-                            UdaanPath prioritizes affordable education, certified
-                            scholarships, and high-ROI career tracks.
+                            UdaanPath prioritizes affordable education,
+                            certified scholarships, and high-ROI career
+                            tracks.
                           </p>
                         </div>
                       </div>
@@ -665,7 +906,10 @@ function App() {
 
                   <div className="form-footer">
                     {step > 0 ? (
-                      <button className="secondary-button" onClick={previousStep}>
+                      <button
+                        className="secondary-button"
+                        onClick={previousStep}
+                      >
                         <ArrowLeft size={18} />
                         Back
                       </button>
@@ -674,7 +918,10 @@ function App() {
                     )}
 
                     {step < steps.length - 1 ? (
-                      <button className="primary-button" onClick={nextStep}>
+                      <button
+                        className="primary-button"
+                        onClick={nextStep}
+                      >
                         Save &amp; Continue
                         <ArrowRight size={18} />
                       </button>
@@ -686,7 +933,11 @@ function App() {
                       >
                         {loading ? (
                           <>
-                            <Loader2 size={18} className="animate-spin" /> Saving...
+                            <Loader2
+                              size={18}
+                              className="animate-spin"
+                            />
+                            Saving...
                           </>
                         ) : (
                           <>
@@ -702,30 +953,40 @@ function App() {
 
               <aside className="info-panel">
                 <SproutScene />
+
                 <div className="info-copy">
                   <span className="info-rule" />
+
                   <h2>
                     Every path
                     <br />
                     starts <em>somewhere</em>
                   </h2>
+
                   <p>
                     Your profile helps us suggest careers, skills, learning
                     resources and opportunities that match your background.
                   </p>
                 </div>
+
                 <ul className="info-list">
-                  {infoPoints.map(({ title, text, icon: Icon }) => (
-                    <li key={title}>
-                      <span className="info-icon">
-                        <Icon size={22} strokeWidth={1.6} />
-                      </span>
-                      <div>
-                        <strong>{title}</strong>
-                        <p>{text}</p>
-                      </div>
-                    </li>
-                  ))}
+                  {infoPoints.map(
+                    ({ title, text, icon: Icon }) => (
+                      <li key={title}>
+                        <span className="info-icon">
+                          <Icon
+                            size={22}
+                            strokeWidth={1.6}
+                          />
+                        </span>
+
+                        <div>
+                          <strong>{title}</strong>
+                          <p>{text}</p>
+                        </div>
+                      </li>
+                    ),
+                  )}
                 </ul>
               </aside>
             </div>
@@ -738,22 +999,38 @@ function App() {
             <div className="dashboard-top">
               <div className="dashboard-title">
                 <h2>Personalized Career Recommendations</h2>
+
                 <p>
-                  Multi-factor matched against your academic background, skills, and financial ROI.
+                  Multi-factor matched against your academic background,
+                  skills, and financial ROI.
                 </p>
               </div>
+
               {student && (
                 <div className="student-badge-pill">
-                  <UserRound size={16} /> {student.full_name} · {student.stream.replace('_', ' ')}
+                  <UserRound size={16} /> {student.full_name} ·{' '}
+                  {student.stream.replace('_', ' ')}
                 </div>
               )}
             </div>
 
             {careers.length === 0 ? (
               <div className="empty-view">
-                <Compass size={48} style={{ margin: '0 auto 16px', color: '#16866a' }} />
+                <Compass
+                  size={48}
+                  style={{
+                    margin: '0 auto 16px',
+                    color: '#16866a',
+                  }}
+                />
+
                 <h3>No recommendations generated yet</h3>
-                <p>Complete your student profile to unlock customized career matches.</p>
+
+                <p>
+                  Complete your student profile to unlock customized
+                  career matches.
+                </p>
+
                 <button
                   className="primary-button"
                   style={{ marginTop: '16px' }}
@@ -768,18 +1045,30 @@ function App() {
                   <div
                     key={career.career_id}
                     className={`item-card ${
-                      selectedCareerId === career.career_id ? 'border-mint' : ''
+                      selectedCareerId === career.career_id
+                        ? 'border-mint'
+                        : ''
                     }`}
                   >
                     <div>
                       <div className="item-card-header">
                         <div>
                           <span className="category-tag">
-                            {career.category.replace(/_/g, ' ')}
+                            {career.category.replace(
+                              /_/g,
+                              ' ',
+                            )}
                           </span>
-                          <h3 className="item-card-title">{career.title}</h3>
-                          <span className="item-card-subtitle">{career.sector}</span>
+
+                          <h3 className="item-card-title">
+                            {career.title}
+                          </h3>
+
+                          <span className="item-card-subtitle">
+                            {career.sector}
+                          </span>
                         </div>
+
                         <span className="score-badge">
                           {Math.round(career.match_score)}% Match
                         </span>
@@ -788,23 +1077,46 @@ function App() {
                       <div className="salary-row">
                         <div className="salary-item">
                           <span>Starting Salary</span>
-                          <strong>₹{(career.starting_salary_inr / 100000).toFixed(1)} LPA</strong>
+
+                          <strong>
+                            ₹
+                            {(
+                              career.starting_salary_inr /
+                              100000
+                            ).toFixed(1)}{' '}
+                            LPA
+                          </strong>
                         </div>
+
                         <div className="salary-item">
                           <span>Mid-Career</span>
-                          <strong>₹{(career.mid_level_salary_inr / 100000).toFixed(1)} LPA</strong>
+
+                          <strong>
+                            ₹
+                            {(
+                              career.mid_level_salary_inr /
+                              100000
+                            ).toFixed(1)}{' '}
+                            LPA
+                          </strong>
                         </div>
+
                         <div className="salary-item">
                           <span>Outlook</span>
                           <strong>{career.growth_outlook}</strong>
                         </div>
                       </div>
 
-                      <p className="item-card-body">{career.rationale}</p>
+                      <p className="item-card-body">
+                        {career.rationale}
+                      </p>
 
                       <div className="skills-wrap">
                         {career.key_skills.map((skill) => (
-                          <span key={skill} className="skill-chip">
+                          <span
+                            key={skill}
+                            className="skill-chip"
+                          >
                             {skill}
                           </span>
                         ))}
@@ -813,8 +1125,15 @@ function App() {
 
                     <button
                       className="primary-button"
-                      style={{ width: '100%', marginTop: '12px' }}
-                      onClick={() => handleSelectCareerForRoadmap(career.career_id)}
+                      style={{
+                        width: '100%',
+                        marginTop: '12px',
+                      }}
+                      onClick={() =>
+                        handleSelectCareerForRoadmap(
+                          career.career_id,
+                        )
+                      }
                     >
                       <BookOpen size={16} />
                       View Learning Roadmap
@@ -831,16 +1150,31 @@ function App() {
           <div className="dashboard-container">
             <div className="dashboard-top">
               <div className="dashboard-title">
-                <h2>{pathway ? `${pathway.career_title} Learning Roadmap` : 'Learning Roadmap'}</h2>
+                <h2>
+                  {pathway
+                    ? `${pathway.career_title} Learning Roadmap`
+                    : 'Learning Roadmap'}
+                </h2>
+
                 <p>
-                  4-stage milestone pathway with certified free SWAYAM/NPTEL alternative resources.
+                  4-stage milestone pathway with certified free
+                  SWAYAM/NPTEL alternative resources.
                 </p>
               </div>
+
               {pathway && (
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '10px',
+                  }}
+                >
                   <span className="student-badge-pill">
-                    Duration: ~{pathway.total_estimated_duration_months} Months
+                    Duration: ~
+                    {pathway.total_estimated_duration_months}{' '}
+                    Months
                   </span>
+
                   <span className="student-badge-pill">
                     {pathway.weekly_study_hours} hrs / week
                   </span>
@@ -848,11 +1182,24 @@ function App() {
               )}
             </div>
 
-            {!pathway || pathway.milestones.length === 0 ? (
+            {!pathway ||
+            pathway.milestones.length === 0 ? (
               <div className="empty-view">
-                <BookOpen size={48} style={{ margin: '0 auto 16px', color: '#16866a' }} />
+                <BookOpen
+                  size={48}
+                  style={{
+                    margin: '0 auto 16px',
+                    color: '#16866a',
+                  }}
+                />
+
                 <h3>No roadmap loaded yet</h3>
-                <p>Select a career from Career Discovery to generate a structured 4-stage roadmap.</p>
+
+                <p>
+                  Select a career from Career Discovery to generate a
+                  structured 4-stage roadmap.
+                </p>
+
                 <button
                   className="primary-button"
                   style={{ marginTop: '16px' }}
@@ -867,7 +1214,9 @@ function App() {
                   <div
                     key={milestone.id}
                     className={`milestone-box ${
-                      milestone.status === 'completed' ? 'completed' : ''
+                      milestone.status === 'completed'
+                        ? 'completed'
+                        : ''
                     }`}
                   >
                     <div className="milestone-step-num">
@@ -881,50 +1230,111 @@ function App() {
                     <div className="milestone-body">
                       <div className="milestone-header">
                         <div>
-                          <span className="milestone-stage-tag">{milestone.stage}</span>
-                          <h3 className="milestone-title">{milestone.title}</h3>
+                          <span className="milestone-stage-tag">
+                            {milestone.stage}
+                          </span>
+
+                          <h3 className="milestone-title">
+                            {milestone.title}
+                          </h3>
                         </div>
+
                         <button
-                          className={milestone.status === 'completed' ? 'secondary-button' : 'primary-button'}
-                          style={{ padding: '6px 14px', fontSize: '13px' }}
-                          onClick={() => handleToggleMilestone(milestone.id, milestone.status)}
+                          className={
+                            milestone.status === 'completed'
+                              ? 'secondary-button'
+                              : 'primary-button'
+                          }
+                          style={{
+                            padding: '6px 14px',
+                            fontSize: '13px',
+                          }}
+                          onClick={() =>
+                            handleToggleMilestone(
+                              milestone.id,
+                              milestone.status,
+                            )
+                          }
                         >
-                          {milestone.status === 'completed' ? 'Mark In Progress' : 'Mark Complete'}
+                          {milestone.status === 'completed'
+                            ? 'Mark In Progress'
+                            : 'Mark Complete'}
                         </button>
                       </div>
 
-                      <p style={{ color: '#35453d', fontSize: '14px', marginBottom: '8px' }}>
+                      <p
+                        style={{
+                          color: '#35453d',
+                          fontSize: '14px',
+                          marginBottom: '8px',
+                        }}
+                      >
                         {milestone.description}
                       </p>
 
-                      <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: '#5e6e66', marginBottom: '8px' }}>
-                        <span>⏱️ {milestone.duration_weeks} Weeks</span>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '12px',
+                          fontSize: '13px',
+                          color: '#5e6e66',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        <span>
+                          ⏱️ {milestone.duration_weeks} Weeks
+                        </span>
+
                         {milestone.recommended_certification && (
-                          <span>📜 Cert: {milestone.recommended_certification}</span>
+                          <span>
+                            📜 Cert:{' '}
+                            {milestone.recommended_certification}
+                          </span>
                         )}
-                        <span>💰 Est. Cost: ₹{milestone.estimated_cost_inr}</span>
+
+                        <span>
+                          💰 Est. Cost: ₹
+                          {milestone.estimated_cost_inr}
+                        </span>
                       </div>
 
                       <div className="skills-wrap">
-                        {milestone.skills_to_acquire.map((skill) => (
-                          <span key={skill} className="skill-chip">
-                            {skill}
-                          </span>
-                        ))}
+                        {milestone.skills_to_acquire.map(
+                          (skill) => (
+                            <span
+                              key={skill}
+                              className="skill-chip"
+                            >
+                              {skill}
+                            </span>
+                          ),
+                        )}
                       </div>
 
                       {milestone.free_alternative_resource && (
                         <div className="free-resource-banner">
                           <span>
-                            🎓 <strong>Free Alternative:</strong> {milestone.free_alternative_resource}
+                            🎓{' '}
+                            <strong>
+                              Free Alternative:
+                            </strong>{' '}
+                            {
+                              milestone.free_alternative_resource
+                            }
                           </span>
+
                           <a
                             href={milestone.resource_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
                           >
-                            Access Portal <ExternalLink size={13} />
+                            Access Portal{' '}
+                            <ExternalLink size={13} />
                           </a>
                         </div>
                       )}
@@ -941,11 +1351,17 @@ function App() {
           <div className="dashboard-container">
             <div className="dashboard-top">
               <div className="dashboard-title">
-                <h2>Verified Opportunities &amp; Scholarships</h2>
+                <h2>
+                  Verified Opportunities &amp; Scholarships
+                </h2>
+
                 <p>
-                  Official government welfare schemes, scholarships, and apprenticeships evaluated with deterministic rules.
+                  Official government welfare schemes, scholarships,
+                  and apprenticeships evaluated with deterministic
+                  rules.
                 </p>
               </div>
+
               <span className="student-badge-pill">
                 🔒 100% Traceable Indian Schemes
               </span>
@@ -953,9 +1369,21 @@ function App() {
 
             {opportunities.length === 0 ? (
               <div className="empty-view">
-                <BriefcaseBusiness size={48} style={{ margin: '0 auto 16px', color: '#16866a' }} />
+                <BriefcaseBusiness
+                  size={48}
+                  style={{
+                    margin: '0 auto 16px',
+                    color: '#16866a',
+                  }}
+                />
+
                 <h3>No opportunities evaluated yet</h3>
-                <p>Complete your student profile to evaluate eligibility across national schemes.</p>
+
+                <p>
+                  Complete your student profile to evaluate eligibility
+                  across national schemes.
+                </p>
+
                 <button
                   className="primary-button"
                   style={{ marginTop: '16px' }}
@@ -968,34 +1396,74 @@ function App() {
               <div className="card-grid">
                 {opportunities.map((item) => {
                   const opp = item.opportunity
-                  const statusClass = item.eligibility_status.toLowerCase()
+                  const statusClass =
+                    item.eligibility_status.toLowerCase()
+
                   return (
-                    <div key={opp.id} className="item-card">
+                    <div
+                      key={opp.id}
+                      className="item-card"
+                    >
                       <div>
                         <div className="item-card-header">
                           <div>
                             <span className="category-tag">
-                              {opp.type.replace(/_/g, ' ')}
+                              {opp.type.replace(
+                                /_/g,
+                                ' ',
+                              )}
                             </span>
-                            <h3 className="item-card-title">{opp.title}</h3>
-                            <span className="item-card-subtitle">{opp.provider}</span>
+
+                            <h3 className="item-card-title">
+                              {opp.title}
+                            </h3>
+
+                            <span className="item-card-subtitle">
+                              {opp.provider}
+                            </span>
                           </div>
-                          <span className={`eligibility-badge ${statusClass}`}>
-                            {item.eligibility_status.replace(/_/g, ' ')}
+
+                          <span
+                            className={`eligibility-badge ${statusClass}`}
+                          >
+                            {item.eligibility_status.replace(
+                              /_/g,
+                              ' ',
+                            )}
                           </span>
                         </div>
 
                         <div className="benefit-box">
-                          <strong>{opp.financial_benefit_description}</strong>
-                          <span>Verified by: {opp.verified_by}</span>
+                          <strong>
+                            {
+                              opp.financial_benefit_description
+                            }
+                          </strong>
+
+                          <span>
+                            Verified by: {opp.verified_by}
+                          </span>
                         </div>
 
-                        <p className="item-card-body">{opp.description}</p>
+                        <p className="item-card-body">
+                          {opp.description}
+                        </p>
 
-                        <div style={{ marginBottom: '12px' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 600, color: '#063b2e' }}>
+                        <div
+                          style={{
+                            marginBottom: '12px',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: '#063b2e',
+                            }}
+                          >
                             Eligibility Evaluation:
                           </span>
+
                           <ul className="reasons-list">
                             {item.reasons.map((r, i) => (
                               <li key={i}>{r}</li>
@@ -1017,7 +1485,8 @@ function App() {
                           gap: '8px',
                         }}
                       >
-                        Apply on Official Portal <ExternalLink size={16} />
+                        Apply on Official Portal{' '}
+                        <ExternalLink size={16} />
                       </a>
                     </div>
                   )
@@ -1032,22 +1501,41 @@ function App() {
           <div className="dashboard-container">
             <div className="dashboard-top">
               <div className="dashboard-title">
-                <h2>AI Career &amp; Education Advisor</h2>
+                <h2>
+                  AI Career &amp; Education Advisor
+                </h2>
+
                 <p>
-                  Powered by Gemini LLM with zero-failure deterministic rule fallback. Ask any questions about careers, schemes, or preparation.
+                  Powered by Gemini LLM with zero-failure deterministic
+                  rule fallback. Ask any questions about careers,
+                  schemes, or preparation.
                 </p>
               </div>
+
               <span className="student-badge-pill">
                 <Sparkles size={16} /> Intelligent Guidance
               </span>
             </div>
 
             <div className="advisor-card">
-              <h3 style={{ fontSize: '18px', color: '#052e24', marginBottom: '8px' }}>
+              <h3
+                style={{
+                  fontSize: '18px',
+                  color: '#052e24',
+                  marginBottom: '8px',
+                }}
+              >
                 Ask your question
               </h3>
-              <p style={{ color: '#5e6e66', fontSize: '14px' }}>
-                Get tailored advice grounded in official Indian schemes and free educational resources.
+
+              <p
+                style={{
+                  color: '#5e6e66',
+                  fontSize: '14px',
+                }}
+              >
+                Get tailored advice grounded in official Indian
+                schemes and free educational resources.
               </p>
 
               <div className="prompt-chips">
@@ -1076,19 +1564,32 @@ function App() {
                   type="text"
                   placeholder="e.g. Which scholarship is best for girls in engineering with low family income?"
                   value={advisorQuery}
-                  onChange={(e) => setAdvisorQuery(e.target.value)}
+                  onChange={(e) =>
+                    setAdvisorQuery(e.target.value)
+                  }
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAskAdvisor(advisorQuery)
+                    if (e.key === 'Enter') {
+                      handleAskAdvisor(advisorQuery)
+                    }
                   }}
                 />
+
                 <button
                   type="button"
                   className="primary-button"
-                  disabled={advisorLoading || !advisorQuery.trim()}
-                  onClick={() => handleAskAdvisor(advisorQuery)}
+                  disabled={
+                    advisorLoading ||
+                    !advisorQuery.trim()
+                  }
+                  onClick={() =>
+                    handleAskAdvisor(advisorQuery)
+                  }
                 >
                   {advisorLoading ? (
-                    <Loader2 size={18} className="animate-spin" />
+                    <Loader2
+                      size={18}
+                      className="animate-spin"
+                    />
                   ) : (
                     <>
                       <Sparkles size={18} />
@@ -1100,46 +1601,109 @@ function App() {
 
               {advisorResult && (
                 <div className="advisor-output">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <strong style={{ color: '#063b2e', fontSize: '16px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: '10px',
+                    }}
+                  >
+                    <strong
+                      style={{
+                        color: '#063b2e',
+                        fontSize: '16px',
+                      }}
+                    >
                       Advisor Recommendation:
                     </strong>
-                    <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#0e6b52', fontWeight: 600 }}>
+
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        textTransform: 'uppercase',
+                        color: '#0e6b52',
+                        fontWeight: 600,
+                      }}
+                    >
                       Provider: {advisorResult.provider}
                     </span>
                   </div>
 
-                  <p style={{ fontSize: '15px', color: '#16231e', whiteSpace: 'pre-line', marginBottom: '14px' }}>
+                  <p
+                    style={{
+                      fontSize: '15px',
+                      color: '#16231e',
+                      whiteSpace: 'pre-line',
+                      marginBottom: '14px',
+                    }}
+                  >
                     {advisorResult.narrative_advice}
                   </p>
 
-                  {advisorResult.key_takeaways && advisorResult.key_takeaways.length > 0 && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <strong style={{ fontSize: '13.5px', color: '#052e24' }}>
-                        Key Takeaways:
-                      </strong>
-                      <div className="skills-wrap" style={{ marginTop: '6px' }}>
-                        {advisorResult.key_takeaways.map((item, i) => (
-                          <span key={i} className="skill-chip">
-                            {item}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {advisorResult.key_takeaways &&
+                    advisorResult.key_takeaways.length >
+                      0 && (
+                      <div
+                        style={{
+                          marginBottom: '12px',
+                        }}
+                      >
+                        <strong
+                          style={{
+                            fontSize: '13.5px',
+                            color: '#052e24',
+                          }}
+                        >
+                          Key Takeaways:
+                        </strong>
 
-                  {advisorResult.suggested_action_items && advisorResult.suggested_action_items.length > 0 && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <strong style={{ fontSize: '13.5px', color: '#052e24' }}>
-                        Action Steps:
-                      </strong>
-                      <ul className="reasons-list" style={{ marginTop: '6px' }}>
-                        {advisorResult.suggested_action_items.map((item, i) => (
-                          <li key={i}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                        <div
+                          className="skills-wrap"
+                          style={{ marginTop: '6px' }}
+                        >
+                          {advisorResult.key_takeaways.map(
+                            (item, i) => (
+                              <span
+                                key={i}
+                                className="skill-chip"
+                              >
+                                {item}
+                              </span>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {advisorResult.suggested_action_items &&
+                    advisorResult.suggested_action_items
+                      .length > 0 && (
+                      <div
+                        style={{
+                          marginBottom: '12px',
+                        }}
+                      >
+                        <strong
+                          style={{
+                            fontSize: '13.5px',
+                            color: '#052e24',
+                          }}
+                        >
+                          Action Steps:
+                        </strong>
+
+                        <ul
+                          className="reasons-list"
+                          style={{ marginTop: '6px' }}
+                        >
+                          {advisorResult.suggested_action_items.map(
+                            (item, i) => (
+                              <li key={i}>{item}</li>
+                            ),
+                          )}
+                        </ul>
+                      </div>
+                    )}
                 </div>
               )}
             </div>
@@ -1149,7 +1713,9 @@ function App() {
         <footer className="footer-note">
           <span>UdaanPath</span>
           <span>•</span>
-          <span>Personalized pathways for every student</span>
+          <span>
+            Personalized pathways for every student
+          </span>
         </footer>
       </main>
     </PortalShell>
@@ -1172,39 +1738,67 @@ function PortalShell({
       <aside className="side">
         <div className="brand">
           <LogoMark size={42} />
+
           <div>
             <span className="brand-name">UdaanPath</span>
-            <span className="brand-tag">LEARN · EXPLORE · GROW</span>
+            <span className="brand-tag">
+              LEARN · EXPLORE · GROW
+            </span>
           </div>
         </div>
 
-        <nav className="side-nav" aria-label="Student portal">
-          {sideNavItems.map(({ id, label, icon: Icon }) => {
-            const isActive = activeNav === id
-            return (
-              <a
-                key={id}
-                className={`side-link ${isActive ? 'active' : ''}`}
-                aria-current={isActive ? 'page' : undefined}
-                style={{ cursor: 'pointer' }}
-                onClick={() => onSelectNav(id)}
-              >
-                <Icon size={22} strokeWidth={1.6} />
-                <span>{label}</span>
-                {isActive && <ChevronRight size={18} className="side-chevron" />}
-              </a>
-            )
-          })}
+        <nav
+          className="side-nav"
+          aria-label="Student portal"
+        >
+          {sideNavItems.map(
+            ({ id, label, icon: Icon }) => {
+              const isActive = activeNav === id
+
+              return (
+                <a
+                  key={id}
+                  className={`side-link ${
+                    isActive ? 'active' : ''
+                  }`}
+                  aria-current={
+                    isActive ? 'page' : undefined
+                  }
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => onSelectNav(id)}
+                >
+                  <Icon
+                    size={22}
+                    strokeWidth={1.6}
+                  />
+
+                  <span>{label}</span>
+
+                  {isActive && (
+                    <ChevronRight
+                      size={18}
+                      className="side-chevron"
+                    />
+                  )}
+                </a>
+              )
+            },
+          )}
         </nav>
 
-        <div className="side-foot" aria-hidden="true">
+        <div
+          className="side-foot"
+          aria-hidden="true"
+        >
           <SidebarScene />
+
           <div className="side-card">
             <p>
               Different backgrounds.
               <br />
               <strong>Brighter futures.</strong>
             </p>
+
             <span className="side-card-arrow">
               <ArrowRight size={18} />
             </span>
@@ -1219,12 +1813,19 @@ function PortalShell({
             <span>UdaanPath</span>
           </div>
 
-          <nav className="top-nav" aria-label="Site">
+          <nav
+            className="top-nav"
+            aria-label="Site"
+          >
             {topNav.map((label, index) => (
               <a
                 key={label}
-                className={index === 0 ? 'active' : ''}
-                aria-current={index === 0 ? 'page' : undefined}
+                className={
+                  index === 0 ? 'active' : ''
+                }
+                aria-current={
+                  index === 0 ? 'page' : undefined
+                }
               >
                 {label}
               </a>
@@ -1234,6 +1835,7 @@ function PortalShell({
           <div className="top-tools">
             <div className="top-search">
               <Search size={18} />
+
               <input
                 type="search"
                 placeholder="Search careers, skills, scholarships..."
@@ -1241,16 +1843,25 @@ function PortalShell({
               />
             </div>
 
-            <div className="top-lang" aria-label="Language">
+            <div
+              className="top-lang"
+              aria-label="Language"
+            >
               <span className="on">EN</span>
               <span className="divider" />
               <span>HI</span>
             </div>
 
             <div className="top-user">
-              <span className="avatar" aria-hidden="true">
-                {initial || <UserRound size={18} />}
+              <span
+                className="avatar"
+                aria-hidden="true"
+              >
+                {initial || (
+                  <UserRound size={18} />
+                )}
               </span>
+
               <ChevronDown size={16} />
             </div>
           </div>
@@ -1272,6 +1883,7 @@ type FieldProps = {
   icon?: LucideIcon
   hint?: string
   wide?: boolean
+  error?: string
   onChange: (value: string) => void
 }
 
@@ -1285,32 +1897,69 @@ function Field({
   icon: Icon,
   hint,
   wide,
+  error,
   onChange,
 }: FieldProps) {
   return (
-    <label className={`field ${wide ? 'field--wide' : ''}`}>
+    <label
+      className={`field ${
+        wide ? 'field--wide' : ''
+      }`}
+    >
       <span>
-        {label} {required && <b aria-hidden="true">*</b>}
+        {label}{' '}
+        {required && (
+          <b aria-hidden="true">*</b>
+        )}
       </span>
 
       <div
-        className={`input-wrapper ${prefix ? 'has-prefix' : ''} ${
-          Icon ? 'has-icon' : ''
+        className={`input-wrapper ${
+          prefix ? 'has-prefix' : ''
+        } ${Icon ? 'has-icon' : ''} ${
+          error ? 'has-error' : ''
         }`}
       >
-        {Icon && <Icon size={18} className="field-icon" />}
-        {prefix && <span className="prefix">{prefix}</span>}
+        {Icon && (
+          <Icon
+            size={18}
+            className="field-icon"
+          />
+        )}
+
+        {prefix && (
+          <span className="prefix">
+            {prefix}
+          </span>
+        )}
 
         <input
           type={type}
           value={value}
           placeholder={placeholder}
-          aria-required={required || undefined}
-          onChange={(event) => onChange(event.target.value)}
+          aria-required={
+            required || undefined
+          }
+          aria-invalid={
+            error ? true : undefined
+          }
+          onChange={(event) =>
+            onChange(event.target.value)
+          }
         />
       </div>
 
-      {hint && <small className="field-hint">{hint}</small>}
+      {error && (
+        <small className="field-error">
+          {error}
+        </small>
+      )}
+
+      {hint && (
+        <small className="field-hint">
+          {hint}
+        </small>
+      )}
     </label>
   )
 }
@@ -1322,6 +1971,7 @@ type SelectProps = {
   required?: boolean
   icon?: LucideIcon
   hint?: string
+  error?: string
   onChange: (value: string) => void
 }
 
@@ -1332,38 +1982,75 @@ function SelectField({
   required,
   icon: Icon,
   hint,
+  error,
   onChange,
 }: SelectProps) {
   return (
     <label className="field">
       <span>
-        {label} {required && <b aria-hidden="true">*</b>}
+        {label}{' '}
+        {required && (
+          <b aria-hidden="true">*</b>
+        )}
       </span>
 
       <div
-        className={`input-wrapper select-wrapper ${Icon ? 'has-icon' : ''} ${
+        className={`input-wrapper select-wrapper ${
+          Icon ? 'has-icon' : ''
+        } ${
           value === '' ? 'is-empty' : ''
-        }`}
+        } ${error ? 'has-error' : ''}`}
       >
-        {Icon && <Icon size={18} className="field-icon" />}
+        {Icon && (
+          <Icon
+            size={18}
+            className="field-icon"
+          />
+        )}
 
         <select
           value={value}
-          aria-required={required || undefined}
-          onChange={(event) => onChange(event.target.value)}
+          aria-required={
+            required || undefined
+          }
+          aria-invalid={
+            error ? true : undefined
+          }
+          onChange={(event) =>
+            onChange(event.target.value)
+          }
         >
-          <option value="">Select {label.toLowerCase()}</option>
+          <option value="">
+            Select {label.toLowerCase()}
+          </option>
+
           {options.map((option) => (
-            <option key={option} value={option}>
+            <option
+              key={option}
+              value={option}
+            >
               {option}
             </option>
           ))}
         </select>
 
-        <ChevronDown size={18} className="select-chevron" />
+        <ChevronDown
+          size={18}
+          className="select-chevron"
+        />
       </div>
 
-      {hint && <small className="field-hint">{hint}</small>}
+      {error && (
+        <small className="field-error">
+          {error}
+        </small>
+      )}
+
+      {hint && (
+        <small className="field-hint">
+          {hint}
+        </small>
+      )}
     </label>
   )
 }
@@ -1387,6 +2074,7 @@ function TagInput({
 
   const handleAdd = () => {
     if (!input.trim()) return
+
     onAdd(input)
     setInput('')
   }
@@ -1399,7 +2087,9 @@ function TagInput({
         <input
           value={input}
           placeholder={placeholder}
-          onChange={(event) => setInput(event.target.value)}
+          onChange={(event) =>
+            setInput(event.target.value)
+          }
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault()
@@ -1408,7 +2098,10 @@ function TagInput({
           }}
         />
 
-        <button type="button" onClick={handleAdd}>
+        <button
+          type="button"
+          onClick={handleAdd}
+        >
           <Plus size={18} />
           Add
         </button>
@@ -1416,9 +2109,18 @@ function TagInput({
 
       <div className="tags">
         {values.map((value) => (
-          <span className="tag" key={value}>
+          <span
+            className="tag"
+            key={value}
+          >
             {value}
-            <button type="button" onClick={() => onRemove(value)}>
+
+            <button
+              type="button"
+              onClick={() =>
+                onRemove(value)
+              }
+            >
               <X size={13} />
             </button>
           </span>
