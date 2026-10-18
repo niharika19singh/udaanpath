@@ -92,7 +92,7 @@ def test_match_scores_all_before_sorting_and_limit(client: TestClient, db_sessio
         "percentage_marks": 80.0,
     }
     student_id = client.post("/api/v1/profiles/", json=profile_payload).json()["id"]
-    scores = {"naps-apprenticeship-promotion": 90.0, "citi-india-youth-employability": 99.0}
+    scores = {"naps-apprenticeship-promotion": 90.0, "kotak-kanya-scholarship": 99.0}
 
     def fake_evaluate(self, student, opportunity):
         return EligibilityCheckResponse(
@@ -118,9 +118,33 @@ def test_match_scores_all_before_sorting_and_limit(client: TestClient, db_sessio
     data = response.json()
     assert data["total_matches"] == 2
     assert [item["opportunity"]["slug"] for item in data["opportunities"]] == [
-        "citi-india-youth-employability",
+        "kotak-kanya-scholarship",
         "naps-apprenticeship-promotion",
     ]
+
+
+def test_match_never_offers_knowledge_base_sample_records(client: TestClient, db_session: Session):
+    seed_sample_opportunities(db_session)
+    payload = {
+        "full_name": "Sample Filter Student",
+        "email": "sample.filter@example.com",
+        "age": 19,
+        "gender": "female",
+        "category": "General",
+        "state": "Uttar Pradesh",
+        "district": "Varanasi",
+        "annual_family_income": 180000.0,
+        "education_level": "12th_pass",
+        "stream": "science_pcm",
+        "percentage_marks": 80.0,
+    }
+    student_id = client.post("/api/v1/profiles/", json=payload).json()["id"]
+    data = client.post("/api/v1/opportunities/match", json={"student_id": student_id, "limit": 50}).json()
+
+    slugs = [item["opportunity"]["slug"] for item in data["opportunities"]]
+    # citi-india-youth-employability is marked is_sample in data/kb/opportunities.json
+    assert "citi-india-youth-employability" not in slugs
+    assert len(slugs) == 6
 
 
 def test_match_returns_empty_when_type_has_no_records(client: TestClient, db_session: Session):

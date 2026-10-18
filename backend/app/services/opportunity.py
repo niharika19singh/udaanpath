@@ -50,6 +50,10 @@ class OpportunityService:
         eligibility_engine = EligibilityEngine(self.db)
 
         for opp in all_opps:
+            # Sample/placeholder records in the knowledge base are not real
+            # programmes, so never offer them to a student.
+            if (eligibility_engine._get_curated_opportunity(opp.slug) or {}).get("is_sample"):
+                continue
             result = eligibility_engine.evaluate(student, opp)
             criteria = result.passed_criteria + result.failed_criteria + result.unknown_criteria
             reasons = [f"{item.criterion_name}: {item.explanation}" for item in criteria]
