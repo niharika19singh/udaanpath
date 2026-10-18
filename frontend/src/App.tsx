@@ -606,7 +606,9 @@ function App({ route }: { route: Route }) {
   }
 
   const fillDemo = () => {
-    setForm(DEMO_FORM)
+    // A fresh address each time: emails are unique, so a fixed demo email
+    // would be rejected on every run after the first.
+    setForm({ ...DEMO_FORM, email: `aarav.demo+${Date.now()}@example.com` })
     setErrors({})
     setDemoFilled(true)
   }
@@ -1439,7 +1441,7 @@ function App({ route }: { route: Route }) {
               </div>
 
               <span className="student-badge-pill">
-                🔒 {t('oppsBadge')}
+                {t('oppsBadge')}
               </span>
             </div>
 
@@ -1511,9 +1513,13 @@ function App({ route }: { route: Route }) {
                           </strong>
 
                           <span>
-                            {t('verifiedBy', {
-                              value: codeLabel(lang, opp.verified_by),
-                            })}
+                            {/* The API reports "unknown" for records not yet
+                                checked against an official source. */}
+                            {opp.verified_by === 'unknown'
+                              ? t('oppsNotVerified')
+                              : t('verifiedBy', {
+                                  value: codeLabel(lang, opp.verified_by),
+                                })}
                           </span>
                         </div>
 
