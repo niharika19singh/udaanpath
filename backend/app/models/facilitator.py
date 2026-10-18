@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime
+from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime, Boolean
 from app.models.base import BaseModel, utc_now
 
 
@@ -21,3 +21,13 @@ class StudentOpportunityAssignment(BaseModel):
     assigned_by = Column(String(120), nullable=False)
     priority = Column(String(20), nullable=False, default="high")  # high, medium, low
     assigned_notes = Column(Text, nullable=True)
+
+
+class FacilitatorAccount(BaseModel):
+    """Counselor/educator login, created by an admin via scripts/create_facilitator.py."""
+    __tablename__ = "facilitator_accounts"
+
+    email = Column(String(120), unique=True, index=True, nullable=False)
+    full_name = Column(String(120), nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)

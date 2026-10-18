@@ -24,3 +24,6 @@ class StudentProfile(BaseModel):
     languages = Column(JSON, nullable=False, default=list)  # list of languages
     career_aspirations = Column(JSON, nullable=False, default=list)
     is_at_risk = Column(Boolean, default=False, nullable=False)
+    # SHA-256 of the student's access key; the key itself is shown once at
+    # creation and never stored. Profiles without one are facilitator-only.
+    access_key_hash = Column(String(64), nullable=True)

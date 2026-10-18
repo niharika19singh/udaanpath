@@ -57,3 +57,9 @@ class ProfileResponse(ProfileBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProfileCreatedResponse(ProfileResponse):
+    # Shown only once. The client sends it as "Authorization: Bearer <key>"
+    # to read or change this profile; the server keeps only its hash.
+    access_key: str

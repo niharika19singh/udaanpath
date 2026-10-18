@@ -34,6 +34,7 @@ import type { LucideIcon } from 'lucide-react'
 import { HeroScene, JourneyScene, LogoMark, SidebarScene } from './ProfileArt'
 import {
   api,
+  setAccessKey,
   type StudentProfileData,
   type CareerItem,
   type OpportunityMatchItem,
@@ -290,6 +291,8 @@ const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 const STUDENT_KEY = 'udaanpath.studentId'
+/** The profile's access key, kept beside its id for this tab only. */
+const ACCESS_KEY = 'udaanpath.studentKey'
 
 // Backend enum values for the form's display options (from origin/main).
 const mapEducationLevel = (val: string): string => {
@@ -478,13 +481,17 @@ function App({ route }: { route: Route }) {
   // Restores the profile this tab submitted earlier (no demo auto-load).
   useEffect(() => {
     let raw: string | null
+    let key: string | null
     try {
       raw = window.sessionStorage.getItem(STUDENT_KEY)
+      key = window.sessionStorage.getItem(ACCESS_KEY)
     } catch {
       return
     }
     const id = Number(raw)
-    if (!raw || !id) return
+    // Without its key the profile cannot be opened, so start fresh.
+    if (!raw || !id || !key) return
+    setAccessKey(key)
     const restore = async () => {
       try {
         const saved = await api.getProfile(id)
@@ -662,10 +669,14 @@ function App({ route }: { route: Route }) {
             phone: form.phone.trim(),
           })
         : await api.createProfile(payload)
+      // A new profile comes with its access key; later requests need it.
+      const issuedKey = (saved as { access_key?: string }).access_key ?? null
+      if (issuedKey) setAccessKey(issuedKey)
       setStudent(saved)
       if (saved.id) {
         try {
           window.sessionStorage.setItem(STUDENT_KEY, String(saved.id))
+          if (issuedKey) window.sessionStorage.setItem(ACCESS_KEY, issuedKey)
           // The saved profile is now the source of truth for the form.
           window.sessionStorage.removeItem(DRAFT_KEY)
         } catch {

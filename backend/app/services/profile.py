@@ -10,14 +10,14 @@ class ProfileService:
     def __init__(self, db: Session):
         self.repo = ProfileRepository(db)
 
-    def create_profile(self, profile_in: ProfileCreate) -> StudentProfile:
+    def create_profile(self, profile_in: ProfileCreate, access_key_hash: Optional[str] = None) -> StudentProfile:
         existing = self.repo.get_by_email(profile_in.email)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"A profile with email {profile_in.email} already exists."
             )
-        return self.repo.create(profile_in)
+        return self.repo.create(profile_in, access_key_hash=access_key_hash)
 
     def get_profile(self, profile_id: int) -> StudentProfile:
         profile = self.repo.get_by_id(profile_id)

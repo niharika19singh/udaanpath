@@ -127,15 +127,24 @@ export interface AiAdvisorResponse {
   topic?: string
 }
 
+/** The student's access key, sent with every request once known. It is
+ *  issued when the profile is created; the API keeps only its hash. */
+let accessKey: string | null = null
+
+export const setAccessKey = (key: string | null) => {
+  accessKey = key
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`
   const response = await fetch(url, {
+    ...options,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...(accessKey ? { Authorization: `Bearer ${accessKey}` } : {}),
       ...options?.headers,
     },
-    ...options,
   })
 
   if (!response.ok) {
@@ -159,10 +168,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  /** The response carries the profile's access key, returned only here. */
   createProfile: async (
     data: StudentProfileData,
-  ): Promise<StudentProfileData> => {
-    return request<StudentProfileData>('/profiles/', {
+  ): Promise<StudentProfileData & { access_key: string }> => {
+    return request<StudentProfileData & { access_key: string }>('/profiles/', {
       method: 'POST',
       body: JSON.stringify(data),
     })
