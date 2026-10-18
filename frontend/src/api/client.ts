@@ -168,6 +168,16 @@ export const api = {
     })
   },
 
+  updateProfile: async (
+    id: number,
+    data: Partial<StudentProfileData>,
+  ): Promise<StudentProfileData> => {
+    return request<StudentProfileData>(`/profiles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+
   getProfile: async (id: number): Promise<StudentProfileData> => {
     return request<StudentProfileData>(`/profiles/${id}`)
   },

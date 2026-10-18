@@ -241,6 +241,7 @@ const en = {
   backToProfile: 'Back to Student Profile',
 
   // Profile (journey form), validation and Career Discovery
+  pfSaveChanges: 'Save changes',
   pfDemoNote: 'Demo values are filled in. Replace them with your own details before you submit.',
   pfFormAlertOne: 'Please check the highlighted field below.',
   pfFormAlertMany: 'Please check the highlighted fields below.',
@@ -578,6 +579,7 @@ const hi: Messages = {
   backToProfile: 'छात्र प्रोफ़ाइल पर वापस जाएँ',
 
   // Profile (journey form), validation and Career Discovery
+  pfSaveChanges: 'बदलाव सहेजें',
   pfDemoNote: 'डेमो जानकारी भर दी गई है। जमा करने से पहले इसे अपनी जानकारी से बदलें।',
   pfFormAlertOne: 'कृपया नीचे हाइलाइट किया गया फ़ील्ड जाँचें।',
   pfFormAlertMany: 'कृपया नीचे हाइलाइट किए गए फ़ील्ड जाँचें।',
