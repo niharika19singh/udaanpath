@@ -15,7 +15,6 @@ class AINarrativeAdviceResponse(BaseModel):
     is_ai_generated: bool
     provider: str  # gemini or rule_engine_fallback
     suggested_action_items: List[str]
-    topic: str = "general"  # what the question was classified as
 
 
 class AIRoadmapEnrichmentRequest(BaseModel):

@@ -31,8 +31,8 @@ class ProfileRepository:
             query = query.filter(StudentProfile.is_at_risk == is_at_risk)
         return query.offset(skip).limit(limit).all()
 
-    def create(self, profile_in: ProfileCreate, access_key_hash: Optional[str] = None) -> StudentProfile:
-        db_obj = StudentProfile(**profile_in.model_dump(), access_key_hash=access_key_hash)
+    def create(self, profile_in: ProfileCreate) -> StudentProfile:
+        db_obj = StudentProfile(**profile_in.model_dump())
         # Automatically mark at-risk if extreme financial constraint or low income
         if db_obj.financial_constraint in ["high", "extreme"] or db_obj.annual_family_income <= 150000:
             db_obj.is_at_risk = True

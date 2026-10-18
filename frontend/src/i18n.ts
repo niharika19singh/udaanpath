@@ -209,13 +209,8 @@ const en = {
   // AI advisor
   advisorTitle: 'AI Career & Education Advisor',
   advisorSubtitle:
-    "Ask about careers, schemes, courses or eligibility. Answers are built from your profile by UdaanPath's matching rules; each answer says whether an AI model was used.",
-  advisorBadge: 'Profile-based guidance',
-  advisorSourceAi: 'AI-generated (Gemini)',
-  advisorSourceRules: 'Rule-based answer · not AI-generated',
-  advisorNoProfileTitle: 'Complete your profile first',
-  advisorNoProfileText:
-    'The advisor answers from your Student Profile. Submit your profile, then ask your question here.',
+    'Powered by Gemini LLM with zero-failure deterministic rule fallback. Ask any questions about careers, schemes, or preparation.',
+  advisorBadge: 'Intelligent Guidance',
   advisorAsk: 'Ask your question',
   advisorAskText:
     'Get tailored advice grounded in official Indian schemes and free educational resources.',
@@ -243,7 +238,6 @@ const en = {
   backToProfile: 'Back to Student Profile',
 
   // Profile (journey form), validation and Career Discovery
-  pfSaveChanges: 'Save changes',
   pfDemoNote: 'Demo values are filled in. Replace them with your own details before you submit.',
   pfFormAlertOne: 'Please check the highlighted field below.',
   pfFormAlertMany: 'Please check the highlighted fields below.',
@@ -549,13 +543,8 @@ const hi: Messages = {
   // AI advisor
   advisorTitle: 'एआई करियर और शिक्षा सलाहकार',
   advisorSubtitle:
-    'करियर, योजनाओं, कोर्स या पात्रता के बारे में पूछें। जवाब UdaanPath के मिलान-नियमों से आपकी प्रोफ़ाइल के आधार पर बनते हैं; हर जवाब बताता है कि उसमें एआई मॉडल का इस्तेमाल हुआ या नहीं।',
-  advisorBadge: 'प्रोफ़ाइल आधारित मार्गदर्शन',
-  advisorSourceAi: 'एआई द्वारा तैयार (Gemini)',
-  advisorSourceRules: 'नियम-आधारित जवाब · एआई से नहीं बना',
-  advisorNoProfileTitle: 'पहले अपनी प्रोफ़ाइल पूरी करें',
-  advisorNoProfileText:
-    'सलाहकार आपकी छात्र प्रोफ़ाइल के आधार पर जवाब देता है। प्रोफ़ाइल जमा करें, फिर यहाँ अपना सवाल पूछें।',
+    'Gemini LLM द्वारा संचालित, निश्चित नियमों के बैकअप के साथ। करियर, योजनाओं या तैयारी के बारे में कोई भी सवाल पूछें।',
+  advisorBadge: 'बुद्धिमान मार्गदर्शन',
   advisorAsk: 'अपना सवाल पूछें',
   advisorAskText:
     'आधिकारिक भारतीय योजनाओं और निःशुल्क शैक्षिक संसाधनों पर आधारित, आपके अनुकूल सलाह पाएँ।',
@@ -584,7 +573,6 @@ const hi: Messages = {
   backToProfile: 'छात्र प्रोफ़ाइल पर वापस जाएँ',
 
   // Profile (journey form), validation and Career Discovery
-  pfSaveChanges: 'बदलाव सहेजें',
   pfDemoNote: 'डेमो जानकारी भर दी गई है। जमा करने से पहले इसे अपनी जानकारी से बदलें।',
   pfFormAlertOne: 'कृपया नीचे हाइलाइट किया गया फ़ील्ड जाँचें।',
   pfFormAlertMany: 'कृपया नीचे हाइलाइट किए गए फ़ील्ड जाँचें।',

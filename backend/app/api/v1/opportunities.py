@@ -2,7 +2,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.security import authorize_student, bearer_token
 from app.services.opportunity import OpportunityService
 from app.schemas.opportunity import (
     OpportunityResponse,
@@ -34,8 +33,7 @@ def get_opportunity(id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/match", response_model=OpportunityMatchResponse)
-def match_opportunities(payload: OpportunityMatchRequest, db: Session = Depends(get_db), token: Optional[str] = Depends(bearer_token)):
+def match_opportunities(payload: OpportunityMatchRequest, db: Session = Depends(get_db)):
     """Find matched opportunities for a student with preliminary eligibility statuses."""
-    authorize_student(db, payload.student_id, token)
     service = OpportunityService(db)
     return service.match_opportunities(payload)

@@ -34,7 +34,6 @@ import type { LucideIcon } from 'lucide-react'
 import { HeroScene, JourneyScene, LogoMark, SidebarScene } from './ProfileArt'
 import {
   api,
-  setAccessKey,
   type StudentProfileData,
   type CareerItem,
   type OpportunityMatchItem,
@@ -42,6 +41,8 @@ import {
   type AiAdvisorResponse,
 } from './api/client'
 import CareerDiscovery from './careers/CareerDiscovery.tsx'
+import OpportunitiesPage from './features/OpportunitiesPage.tsx'
+import LearningRoadmapPage from './features/LearningRoadmapPage.tsx'
 import {
   codeLabel,
   eligibilityLabel,
@@ -56,6 +57,7 @@ import {
 import { linkTo, navigate, routes, type Route } from './router.ts'
 import './App.css'
 import './onboarding.css'
+import './features.css'
 
 type FormData = {
   full_name: string
@@ -291,8 +293,6 @@ const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 const STUDENT_KEY = 'udaanpath.studentId'
-/** The profile's access key, kept beside its id for this tab only. */
-const ACCESS_KEY = 'udaanpath.studentKey'
 
 // Backend enum values for the form's display options (from origin/main).
 const mapEducationLevel = (val: string): string => {
@@ -350,61 +350,6 @@ const toPayload = (form: FormData): StudentProfileData => ({
   languages: form.languages,
   career_aspirations: form.career_aspirations,
 })
-
-/** Fills the form from a saved profile (the reverse of toPayload). A few
- *  choices map to the same stored value, e.g. "Computer Science" is saved as
- *  PCM, so those come back as their closest option. */
-const fromProfile = (p: StudentProfileData): FormData => {
-  const pick = (map: Record<string, string>, v?: string) =>
-    (v && map[v]) || ''
-  return {
-    full_name: p.full_name ?? '',
-    email: p.email ?? '',
-    phone: p.phone ?? '',
-    age: p.age != null ? String(p.age) : '',
-    gender: pick({ male: 'Male', female: 'Female', other: 'Other' }, p.gender),
-    category: p.category ?? '',
-    state: p.state ?? '',
-    district: p.district ?? '',
-    location_tier: pick(
-      { tier_1: 'Tier 1', tier_2: 'Tier 2', tier_3: 'Tier 3' },
-      p.location_tier,
-    ),
-    education_level: pick(
-      {
-        '10th_pass': '10th pass',
-        '12th_pass': '12th pass',
-        iti_diploma: 'Diploma',
-        undergraduate: 'Undergraduate',
-        postgraduate: 'Postgraduate',
-      },
-      p.education_level,
-    ),
-    stream: pick(
-      {
-        science_pcm: 'Science PCM',
-        science_pcb: 'Science PCB',
-        commerce: 'Commerce',
-        arts_humanities: 'Arts / Humanities',
-        vocational: 'Vocational',
-        general: 'Other',
-      },
-      p.stream,
-    ),
-    percentage_marks:
-      p.percentage_marks != null ? String(p.percentage_marks) : '',
-    skills: p.skills ?? [],
-    interests: p.interests ?? [],
-    languages: p.languages ?? [],
-    career_aspirations: p.career_aspirations ?? [],
-    annual_family_income:
-      p.annual_family_income != null ? String(p.annual_family_income) : '',
-    financial_constraint: pick(
-      { low: 'Low', moderate: 'Medium', high: 'High', extreme: 'High' },
-      p.financial_constraint,
-    ),
-  }
-}
 
 function App({ route }: { route: Route }) {
   const [draft] = useState(readDraft)
@@ -471,45 +416,30 @@ function App({ route }: { route: Route }) {
       setSelectedCareerId(topCareer.career_id)
       const p = await api.generatePathway(id, topCareer.career_id)
       setPathway(p)
-    } else {
-      // An edited profile may no longer match any career; drop the old roadmap.
-      setSelectedCareerId(null)
-      setPathway(null)
     }
   }
 
   // Restores the profile this tab submitted earlier (no demo auto-load).
   useEffect(() => {
     let raw: string | null
-    let key: string | null
     try {
       raw = window.sessionStorage.getItem(STUDENT_KEY)
-      key = window.sessionStorage.getItem(ACCESS_KEY)
     } catch {
       return
     }
     const id = Number(raw)
-    // Without its key the profile cannot be opened, so start fresh.
-    if (!raw || !id || !key) return
-    setAccessKey(key)
+    if (!raw || !id) return
     const restore = async () => {
       try {
         const saved = await api.getProfile(id)
         setStudent(saved)
-        // Unsaved edits in this tab's draft win; otherwise show the saved
-        // profile so it can be edited.
-        if (!draft) {
-          setForm(fromProfile(saved))
-          setMaxReached(steps.length - 1)
-        }
         await loadStudentData(id)
       } catch {
         // Backend unavailable or the profile no longer exists.
       }
     }
     restore()
-    // draft is read once at mount and never changes, so this still runs once.
-  }, [draft])
+  }, [])
 
   useEffect(() => {
     try {
@@ -661,31 +591,15 @@ function App({ route }: { route: Route }) {
     setErrors({})
 
     try {
-      const payload = toPayload(form)
-      // After the first submit, edits update the same profile (PUT) rather
-      // than creating a new one, which the duplicate-email check rejects.
-      // A cleared phone number is sent as '' so the old one is removed.
-      const saved = student?.id
-        ? await api.updateProfile(student.id, {
-            ...payload,
-            phone: form.phone.trim(),
-          })
-        : await api.createProfile(payload)
-      // A new profile comes with its access key; later requests need it.
-      const issuedKey = (saved as { access_key?: string }).access_key ?? null
-      if (issuedKey) setAccessKey(issuedKey)
-      setStudent(saved)
-      if (saved.id) {
+      const created = await api.createProfile(toPayload(form))
+      setStudent(created)
+      if (created.id) {
         try {
-          window.sessionStorage.setItem(STUDENT_KEY, String(saved.id))
-          if (issuedKey) window.sessionStorage.setItem(ACCESS_KEY, issuedKey)
-          // The saved profile is now the source of truth for the form.
-          window.sessionStorage.removeItem(DRAFT_KEY)
+          window.sessionStorage.setItem(STUDENT_KEY, String(created.id))
         } catch {
           /* storage unavailable: the profile stays loaded for this visit */
         }
-        // Recompute matches, opportunities and the top roadmap.
-        await loadStudentData(saved.id)
+        await loadStudentData(created.id)
       }
       setDemoFilled(false)
       selectNav('careers')
@@ -711,26 +625,6 @@ function App({ route }: { route: Route }) {
     }
   }
 
-  const handleToggleMilestone = async (
-    milestoneId: number,
-    currentStatus: string,
-  ) => {
-    const newStatus =
-      currentStatus === 'completed' ? 'in_progress' : 'completed'
-    try {
-      const updated = await api.updateMilestoneStatus(milestoneId, newStatus)
-      if (pathway) {
-        setPathway({
-          ...pathway,
-          milestones: pathway.milestones.map((m) =>
-            m.id === milestoneId ? { ...m, status: updated.status } : m,
-          ),
-        })
-      }
-    } catch (err: unknown) {
-      console.error('Failed to update milestone status:', err)
-    }
-  }
 
   const handleAskAdvisor = async (queryText: string) => {
     if (!student?.id || !queryText.trim()) return
@@ -1172,9 +1066,7 @@ function App({ route }: { route: Route }) {
                           </>
                         ) : (
                           <>
-                            {student?.id
-                              ? t('pfSaveChanges')
-                              : t('completeProfile')}
+                            {t('completeProfile')}
                             <Check size={18} />
                           </>
                         )}
@@ -1228,350 +1120,28 @@ function App({ route }: { route: Route }) {
           />
         )}
 
-        {/* LEARNING ROADMAP VIEW */}
         {activeNav === 'pathways' && (
-          <div className="dashboard-container">
-            <div className="dashboard-top">
-              <div className="dashboard-title">
-                <h2>
-                  {pathway
-                    ? t('roadmapTitleFor', {
-                        career: pathway.career_title,
-                      })
-                    : t('roadmapTitle')}
-                </h2>
-
-                <p>{t('roadmapSubtitle')}</p>
-              </div>
-
-              {pathway && (
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '10px',
-                  }}
-                >
-                  <span className="student-badge-pill">
-                    {t('duration', {
-                      n: pathway.total_estimated_duration_months,
-                    })}
-                  </span>
-
-                  <span className="student-badge-pill">
-                    {t('hoursPerWeek', { n: pathway.weekly_study_hours })}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {!pathway ||
-            pathway.milestones.length === 0 ? (
-              <div className="empty-view">
-                <BookOpen
-                  size={48}
-                  style={{
-                    margin: '0 auto 16px',
-                    color: '#16866a',
-                  }}
-                />
-
-                <h3>{t('roadmapEmptyTitle')}</h3>
-
-                <p>{t('roadmapEmptyText')}</p>
-
-                <button
-                  className="primary-button"
-                  style={{ marginTop: '16px' }}
-                  onClick={() => selectNav('careers')}
-                >
-                  {t('exploreCareersFirst')}
-                </button>
-              </div>
-            ) : (
-              <div className="milestones-flow">
-                {pathway.milestones.map((milestone) => (
-                  <div
-                    key={milestone.id}
-                    className={`milestone-box ${
-                      milestone.status === 'completed'
-                        ? 'completed'
-                        : ''
-                    }`}
-                  >
-                    <div className="milestone-step-num">
-                      {milestone.status === 'completed' ? (
-                        <Check size={20} />
-                      ) : (
-                        milestone.step_number
-                      )}
-                    </div>
-
-                    <div className="milestone-body">
-                      <div className="milestone-header">
-                        <div>
-                          <span className="milestone-stage-tag">
-                            {codeLabel(lang, milestone.stage)}
-                          </span>
-
-                          <h3 className="milestone-title">
-                            {milestone.title}
-                          </h3>
-                        </div>
-
-                        <button
-                          className={
-                            milestone.status === 'completed'
-                              ? 'secondary-button'
-                              : 'primary-button'
-                          }
-                          style={{
-                            padding: '6px 14px',
-                            fontSize: '13px',
-                          }}
-                          onClick={() =>
-                            handleToggleMilestone(
-                              milestone.id,
-                              milestone.status,
-                            )
-                          }
-                        >
-                          {milestone.status === 'completed'
-                            ? t('markInProgress')
-                            : t('markComplete')}
-                        </button>
-                      </div>
-
-                      <p
-                        style={{
-                          color: '#35453d',
-                          fontSize: '14px',
-                          marginBottom: '8px',
-                        }}
-                      >
-                        {milestone.description}
-                      </p>
-
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: '12px',
-                          fontSize: '13px',
-                          color: '#5e6e66',
-                          marginBottom: '8px',
-                        }}
-                      >
-                        <span>
-                          ⏱️{' '}
-                          {t('weeks', { n: milestone.duration_weeks })}
-                        </span>
-
-                        {milestone.recommended_certification && (
-                          <span>
-                            📜{' '}
-                            {t('cert', {
-                              value: milestone.recommended_certification,
-                            })}
-                          </span>
-                        )}
-
-                        <span>
-                          💰{' '}
-                          {t('estCost', {
-                            n: milestone.estimated_cost_inr,
-                          })}
-                        </span>
-                      </div>
-
-                      <div className="skills-wrap">
-                        {milestone.skills_to_acquire.map(
-                          (skill) => (
-                            <span
-                              key={skill}
-                              className="skill-chip"
-                            >
-                              {skill}
-                            </span>
-                          ),
-                        )}
-                      </div>
-
-                      {milestone.free_alternative_resource && (
-                        <div className="free-resource-banner">
-                          <span>
-                            🎓{' '}
-                            <strong>
-                              {t('freeAlternative')}
-                            </strong>{' '}
-                            {
-                              milestone.free_alternative_resource
-                            }
-                          </span>
-
-                          <a
-                            href={milestone.resource_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                            }}
-                          >
-                            {t('accessPortal')}{' '}
-                            <ExternalLink size={13} />
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <LearningRoadmapPage
+            student={student}
+            careers={careers}
+            pathway={pathway}
+            selectedCareerId={selectedCareerId}
+            onPathway={(nextPathway, careerId) => {
+              setPathway(nextPathway)
+              setSelectedCareerId(careerId)
+            }}
+            onCompleteProfile={() => selectNav('profile')}
+            lang={lang}
+          />
         )}
 
-        {/* OPPORTUNITIES & SCHOLARSHIPS VIEW */}
         {activeNav === 'opportunities' && (
-          <div className="dashboard-container">
-            <div className="dashboard-top">
-              <div className="dashboard-title">
-                <h2>{t('oppsTitle')}</h2>
-
-                <p>{t('oppsSubtitle')}</p>
-              </div>
-
-              <span className="student-badge-pill">
-                {t('oppsBadge')}
-              </span>
-            </div>
-
-            {opportunities.length === 0 ? (
-              <div className="empty-view">
-                <BriefcaseBusiness
-                  size={48}
-                  style={{
-                    margin: '0 auto 16px',
-                    color: '#16866a',
-                  }}
-                />
-
-                <h3>{t('oppsEmptyTitle')}</h3>
-
-                <p>{t('oppsEmptyText')}</p>
-
-                <button
-                  className="primary-button"
-                  style={{ marginTop: '16px' }}
-                  onClick={() => selectNav('profile')}
-                >
-                  {t('completeProfileBtn')}
-                </button>
-              </div>
-            ) : (
-              <div className="card-grid">
-                {opportunities.map((item) => {
-                  const opp = item.opportunity
-                  const statusClass =
-                    item.eligibility_status.toLowerCase()
-
-                  return (
-                    <div
-                      key={opp.id}
-                      className="item-card"
-                    >
-                      <div>
-                        <div className="item-card-header">
-                          <div>
-                            <span className="category-tag">
-                              {codeLabel(lang, opp.type)}
-                            </span>
-
-                            <h3 className="item-card-title">
-                              {opp.title}
-                            </h3>
-
-                            <span className="item-card-subtitle">
-                              {opp.provider}
-                            </span>
-                          </div>
-
-                          <span
-                            className={`eligibility-badge ${statusClass}`}
-                          >
-                            {eligibilityLabel(
-                              lang,
-                              item.eligibility_status,
-                            )}
-                          </span>
-                        </div>
-
-                        <div className="benefit-box">
-                          <strong>
-                            {
-                              opp.financial_benefit_description
-                            }
-                          </strong>
-
-                          <span>
-                            {/* The API reports "unknown" for records not yet
-                                checked against an official source. */}
-                            {opp.verified_by === 'unknown'
-                              ? t('oppsNotVerified')
-                              : t('verifiedBy', {
-                                  value: codeLabel(lang, opp.verified_by),
-                                })}
-                          </span>
-                        </div>
-
-                        <p className="item-card-body">
-                          {opp.description}
-                        </p>
-
-                        <div
-                          style={{
-                            marginBottom: '12px',
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              color: '#063b2e',
-                            }}
-                          >
-                            {t('eligibilityEvaluation')}
-                          </span>
-
-                          <ul className="reasons-list">
-                            {item.reasons.map((r, i) => (
-                              <li key={i}>{r}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-
-                      <a
-                        href={opp.official_portal_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="primary-button"
-                        style={{
-                          textDecoration: 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                        }}
-                      >
-                        {t('applyOfficial')}{' '}
-                        <ExternalLink size={16} />
-                      </a>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+          <OpportunitiesPage
+            student={student}
+            matched={opportunities}
+            lang={lang}
+            onCompleteProfile={() => selectNav('profile')}
+          />
         )}
 
         {/* AI CAREER ADVISOR VIEW */}
@@ -1585,7 +1155,7 @@ function App({ route }: { route: Route }) {
               </div>
 
               <span className="student-badge-pill">
-                <Compass size={16} /> {t('advisorBadge')}
+                <Sparkles size={16} /> {t('advisorBadge')}
               </span>
             </div>
 
@@ -1609,25 +1179,6 @@ function App({ route }: { route: Route }) {
                 {t('advisorAskText')}
               </p>
 
-              {!student && (
-                <div className="empty-view" role="status">
-                  <UserRound
-                    size={40}
-                    style={{ margin: '0 auto 12px', color: '#16866a' }}
-                  />
-                  <h3>{t('advisorNoProfileTitle')}</h3>
-                  <p>{t('advisorNoProfileText')}</p>
-                  <button
-                    type="button"
-                    className="primary-button"
-                    style={{ marginTop: '16px' }}
-                    onClick={() => selectNav('profile')}
-                  >
-                    {t('completeProfileBtn')}
-                  </button>
-                </div>
-              )}
-
               <div className="prompt-chips">
                 {[
                   t('advisorPrompt1'),
@@ -1639,7 +1190,6 @@ function App({ route }: { route: Route }) {
                     key={promptText}
                     type="button"
                     className="prompt-chip"
-                    disabled={!student || advisorLoading}
                     onClick={() => {
                       setAdvisorQuery(promptText)
                       handleAskAdvisor(promptText)
@@ -1654,7 +1204,6 @@ function App({ route }: { route: Route }) {
                 <input
                   type="text"
                   placeholder={t('advisorPlaceholder')}
-                  disabled={!student}
                   value={advisorQuery}
                   onChange={(e) =>
                     setAdvisorQuery(e.target.value)
@@ -1670,7 +1219,6 @@ function App({ route }: { route: Route }) {
                   type="button"
                   className="primary-button"
                   disabled={
-                    !student ||
                     advisorLoading ||
                     !advisorQuery.trim()
                   }
@@ -1718,10 +1266,9 @@ function App({ route }: { route: Route }) {
                         fontWeight: 600,
                       }}
                     >
-                      {advisorResult.is_ai_generated &&
-                      advisorResult.provider === 'gemini'
-                        ? t('advisorSourceAi')
-                        : t('advisorSourceRules')}
+                      {t('advisorProvider', {
+                        value: advisorResult.provider,
+                      })}
                     </span>
                   </div>
 
