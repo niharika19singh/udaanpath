@@ -72,14 +72,3 @@ class FacilitatorDashboardResponse(BaseModel):
     total_interventions_logged: int
     average_milestone_completion_rate: float
     top_priority_students: List[FacilitatorStudentItem]
-
-
-class FacilitatorLoginRequest(BaseModel):
-    email: str = Field(..., min_length=3, max_length=120)
-    password: str = Field(..., min_length=1, max_length=200)
-
-
-class FacilitatorTokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int  # seconds

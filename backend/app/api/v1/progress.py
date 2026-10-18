@@ -1,9 +1,6 @@
-from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.security import authorize_student, bearer_token
-from app.repositories.progress import ProgressRepository
 from app.services.progress import ProgressService
 from app.schemas.progress import (
     OpportunityApplicationCreate,
@@ -18,33 +15,28 @@ router = APIRouter(prefix="/progress", tags=["Student Progress & Application Tra
 
 
 @router.get("/student/{student_id}", response_model=StudentProgressOverview)
-def get_student_progress(student_id: int, db: Session = Depends(get_db), token: Optional[str] = Depends(bearer_token)):
+def get_student_progress(student_id: int, db: Session = Depends(get_db)):
     """Fetch complete progress overview: milestone completion rate, document readiness score, badges, and applications."""
-    authorize_student(db, student_id, token)
     service = ProgressService(db)
     return service.get_student_progress_overview(student_id)
 
 
 @router.post("/applications", response_model=OpportunityApplicationResponse, status_code=status.HTTP_201_CREATED)
-def record_application(payload: OpportunityApplicationCreate, db: Session = Depends(get_db), token: Optional[str] = Depends(bearer_token)):
+def record_application(payload: OpportunityApplicationCreate, db: Session = Depends(get_db)):
     """Save or update an application for a scholarship, scheme, or apprenticeship."""
-    authorize_student(db, payload.student_id, token)
     service = ProgressService(db)
     return service.record_application(payload)
 
 
 @router.put("/applications/{app_id}", response_model=OpportunityApplicationResponse)
-def update_application(app_id: int, payload: OpportunityApplicationUpdate, db: Session = Depends(get_db), token: Optional[str] = Depends(bearer_token)):
+def update_application(app_id: int, payload: OpportunityApplicationUpdate, db: Session = Depends(get_db)):
     """Update status of an opportunity application (e.g. shortlisted, awarded, rejected)."""
-    application = ProgressRepository(db).get_application_by_id(app_id)
-    authorize_student(db, application.student_id if application else None, token)
     service = ProgressService(db)
     return service.update_application_status(app_id, payload)
 
 
 @router.post("/documents", response_model=StudentDocumentResponse, status_code=status.HTTP_201_CREATED)
-def register_document(payload: StudentDocumentCreate, db: Session = Depends(get_db), token: Optional[str] = Depends(bearer_token)):
+def register_document(payload: StudentDocumentCreate, db: Session = Depends(get_db)):
     """Register or verify student documentation to boost document readiness score."""
-    authorize_student(db, payload.student_id, token)
     service = ProgressService(db)
     return service.register_document(payload)

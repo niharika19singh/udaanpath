@@ -2,7 +2,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.security import authorize_student, bearer_token
 from app.repositories.career import CareerRepository
 from app.services.recommendation import RecommendationService
 from app.schemas.career import (
@@ -43,8 +42,7 @@ def get_career(id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/recommend", response_model=CareerRecommendationResponse)
-def recommend_careers(payload: CareerRecommendationRequest, db: Session = Depends(get_db), token: Optional[str] = Depends(bearer_token)):
+def recommend_careers(payload: CareerRecommendationRequest, db: Session = Depends(get_db)):
     """Generate multi-factor, diverse career recommendations tailored to a student's profile."""
-    authorize_student(db, payload.student_id, token)
     service = RecommendationService(db)
     return service.recommend_careers(student_id=payload.student_id, limit=payload.limit)

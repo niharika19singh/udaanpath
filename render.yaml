@@ -19,33 +19,10 @@ services:
         fromDatabase:
           name: udaanpath-db
           property: connectionString
-      # Set in the Render dashboard to the frontend's URL once it exists,
-      # e.g. ["https://<your-frontend>.onrender.com"]. The API refuses to
-      # start in production while this is "*" or unset.
       - key: CORS_ORIGINS
-        sync: false
-      # Signs facilitator login tokens. Generated once by Render.
+        value: '["*"]'
       - key: SECRET_KEY
         generateValue: true
-
-  # Frontend: Vite + React single-page app served as static files.
-  - type: web
-    name: udaanpath-web
-    runtime: static
-    rootDir: frontend
-    buildCommand: "npm ci && npm run build"
-    staticPublishPath: dist
-    # Every portal path (/onboarding, /careers, /roadmap, ...) is handled by
-    # the app's own router, so direct visits and refreshes get index.html.
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      # Read at build time. Set in the Render dashboard to the API service's
-      # URL plus /api/v1, e.g. https://<your-api>.onrender.com/api/v1
-      - key: VITE_API_BASE_URL
-        sync: false
 
 databases:
   - name: udaanpath-db

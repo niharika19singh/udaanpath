@@ -4,7 +4,7 @@ from app.models.career import Career
 from app.models.pathway import Pathway, PathwayMilestone
 from app.models.opportunity import Opportunity
 from app.models.progress import OpportunityApplication, SkillBadge, StudentDocument
-from app.models.facilitator import CounselorIntervention, StudentOpportunityAssignment, FacilitatorAccount
+from app.models.facilitator import CounselorIntervention, StudentOpportunityAssignment
 
 __all__ = [
     "BaseModel",
@@ -17,6 +17,5 @@ __all__ = [
     "SkillBadge",
     "StudentDocument",
     "CounselorIntervention",
-    "StudentOpportunityAssignment",
-    "FacilitatorAccount",
+    "StudentOpportunityAssignment"
 ]

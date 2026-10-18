@@ -65,6 +65,7 @@ export interface MilestoneItem {
   skills_to_acquire: string[]
   recommended_certification?: string
   estimated_cost_inr: number
+  estimated_cost_is_unknown?: boolean
   free_alternative_resource: string
   resource_url: string
   status: 'not_started' | 'in_progress' | 'completed' | string
@@ -77,6 +78,7 @@ export interface PathwayResponse {
   career_title: string
   total_estimated_duration_months: number
   total_estimated_cost_inr: number
+  total_estimated_cost_is_unknown?: boolean
   free_alternative_available: boolean
   weekly_study_hours: number
   is_active: boolean
@@ -92,6 +94,13 @@ export interface OpportunityItem {
   description: string
   official_portal_url: string
   verification_date: string
+  deadline?: string | null
+  allowed_genders?: string[]
+  allowed_categories?: string[]
+  domicile_states?: string[]
+  eligible_education_levels?: string[]
+  eligible_streams?: string[]
+  is_active?: boolean
   verified_by: string
   financial_benefit_inr: number
   financial_benefit_description: string
@@ -123,28 +132,17 @@ export interface AiAdvisorResponse {
   is_ai_generated: boolean
   provider: string
   suggested_action_items: string[]
-  /** What the question was classified as (careers, funding, ...). */
-  topic?: string
-}
-
-/** The student's access key, sent with every request once known. It is
- *  issued when the profile is created; the API keeps only its hash. */
-let accessKey: string | null = null
-
-export const setAccessKey = (key: string | null) => {
-  accessKey = key
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`
   const response = await fetch(url, {
-    ...options,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      ...(accessKey ? { Authorization: `Bearer ${accessKey}` } : {}),
       ...options?.headers,
     },
+    ...options,
   })
 
   if (!response.ok) {
@@ -168,22 +166,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  /** The response carries the profile's access key, returned only here. */
   createProfile: async (
     data: StudentProfileData,
-  ): Promise<StudentProfileData & { access_key: string }> => {
-    return request<StudentProfileData & { access_key: string }>('/profiles/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  },
-
-  updateProfile: async (
-    id: number,
-    data: Partial<StudentProfileData>,
   ): Promise<StudentProfileData> => {
-    return request<StudentProfileData>(`/profiles/${id}`, {
-      method: 'PUT',
+    return request<StudentProfileData>('/profiles/', {
+      method: 'POST',
       body: JSON.stringify(data),
     })
   },
