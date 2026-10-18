@@ -5,7 +5,7 @@ services:
     region: singapore
     plan: free
     buildCommand: "pip install --upgrade pip && pip install -r backend/requirements.txt"
-    startCommand: "python backend/data/seed.py && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "python backend/data/seed.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: APP_NAME
         value: UdaanPath
@@ -23,8 +23,8 @@ services:
       # e.g. ["https://<your-frontend>.onrender.com"]. The API refuses to
       # start in production while this is "*" or unset.
       - key: CORS_ORIGINS
-        sync: false
-      # Signs facilitator login tokens. Generated once by Render.
+        value: "https://frontend-five-psi-43.vercel.app"
+      # Signs facilitator login tokens.
       - key: SECRET_KEY
         generateValue: true
 
@@ -47,9 +47,9 @@ services:
       - key: VITE_API_BASE_URL
         sync: false
 
-databases:
-  - name: udaanpath-db
-    region: singapore
-    plan: free
-    databaseName: udaanpath
-    user: udaanpath_user
+  databases:
+    - name: udaanpath-db
+      region: singapore
+      plan: free
+      databaseName: udaanpath
+      user: udaanpath_user
