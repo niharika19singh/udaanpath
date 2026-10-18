@@ -5,7 +5,7 @@ services:
     region: singapore
     plan: free
     buildCommand: "pip install --upgrade pip && pip install -r backend/requirements.txt"
-    startCommand: "python backend/data/seed.py && uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"
+    startCommand: "cd backend && python data/seed.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: APP_NAME
         value: UdaanPath
@@ -17,23 +17,8 @@ services:
         fromDatabase:
           name: udaanpath-db
           property: connectionString
-      # Set in the Render dashboard to the frontend's URL once it exists,
-      # e.g. ["https://frontend-five-psi-43.vercel.app"]. The API refuses to
-      # start in production while this is "*" or unset.
       - key: CORS_ORIGINS
-        value: "https://frontend-five-psi-43.vercel.app"
-      # Signs facilitator login tokens.
-      - key: SECRET_KEY
-        generateValue: true
-        fromDatabase:
-          name: udaanpath-db
-          property: connectionString
-      # Set in the Render dashboard to the frontend's URL once it exists,
-      # e.g. ["https://<your-frontend>.onrender.com"]. The API refuses to
-      # start in production while this is "*" or unset.
-      - key: CORS_ORIGINS
-        value: "https://frontend-five-psi-43.vercel.app"
-      # Signs facilitator login tokens.
+        value: '["https://frontend-five-psi-43.vercel.app"]'
       - key: SECRET_KEY
         generateValue: true
 
@@ -44,21 +29,17 @@ services:
     rootDir: frontend
     buildCommand: "npm ci && npm run build"
     staticPublishPath: dist
-    # Every portal path (/onboarding, /careers, /roadmap, ...) is handled by
-    # the app's own router, so direct visits and refreshes get index.html.
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
     envVars:
-      # Read at build time. Set in the Render dashboard to the API service's
-      # URL plus /api/v1, e.g. https://<your-api>.onrender.com/api/v1
       - key: VITE_API_BASE_URL
         sync: false
 
-  databases:
-    - name: udaanpath-db
-      region: singapore
-      plan: free
-      databaseName: udaanpath
-      user: udaanpath_user
+databases:
+  - name: udaanpath-db
+    region: singapore
+    plan: free
+    databaseName: udaanpath
+    user: udaanpath_user
